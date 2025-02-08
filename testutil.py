@@ -38,3 +38,41 @@ def pytest_configure(config):
     base_temp = os.getenv("PYTEST_BASE_TEMP")
     if base_temp:
         Path(base_temp).mkdir(parents=True, exist_ok=True)
+
+
+def run_post_test_verifications(logger, result):
+    """Run post-test verifications to ensure proper test behavior.
+    
+    This function runs in the main process after all tests have completed.
+    It verifies that:
+    1. Failed tests are properly tracked in the main process
+    2. Each failed test has at least one log message to help with debugging
+    
+    Args:
+        logger: The AutodebuggerLogger instance
+        result: The pytest result code
+        
+    Returns:
+        bool: True if all verifications pass, False otherwise
+    """
+    # If tests passed, nothing to verify
+    if result == 0:
+        return True
+        
+    # Verify that we have failed tests in the main process
+    if not logger.failed_tests:
+        print("ERROR: No failed tests found in main process")
+        return False
+        
+    # Verify that each failed test has at least one log message
+    for test_id in logger.failed_tests:
+        if test_id not in logger.collector.logs:
+            print(f"ERROR: No logs found for failed test {test_id}")
+            return False
+        
+        logs = logger.collector.logs[test_id]
+        if not logs.messages:  # Check if there are any messages at all
+            print(f"ERROR: Failed test {test_id} has no log messages to help with debugging")
+            return False
+            
+    return True

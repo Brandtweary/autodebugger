@@ -88,6 +88,20 @@ Coverage works seamlessly with parallel execution. When using `--cov`, tests are
 
 - `PYTEST_BASE_TEMP`: Base directory for test temporary directories (default: `/tmp`)
 
+## Logging System
+
+The autodebugger provides a logging system that integrates with pytest's output capture. This allows you to:
+- Log messages at different severity levels (DEBUG, INFO, WARNING, etc.)
+- Automatically show all logs for failed tests
+- Control log visibility based on pytest verbosity flags
+
+The logger has three visibility modes:
+- Default: Only WARNING and above are shown
+- Verbose (`-v`): INFO and above are shown
+- No Capture (`-s`): All messages are shown (disables output capture)
+
+For failed tests, all log messages are shown regardless of mode to help with debugging.
+
 ## Integration with pytest
 
 The autodebugger is fully compatible with pytest. All pytest arguments are passed through, including:

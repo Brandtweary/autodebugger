@@ -42,7 +42,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 import pytest
-
+from autodebugger.autodebugger_logger import logger
 
 def split_pytest_args(args: List[str]) -> Tuple[List[str], List[str]]:
     """Split arguments into autodebugger args and pytest args.
@@ -145,22 +145,17 @@ def run_pytest(args):
         if not args.test_paths or (len(args.test_paths) == 1 and args.test_paths[0] == "tests"):
             cwd = Path.cwd()
             test_paths = []
-            print(f"autodebugger: searching for tests in {cwd}")
-            
+
             # Check root level tests/
             if (cwd / "tests").is_dir():
-                print(f"autodebugger: found root tests/ directory")
                 test_paths.append("tests")
                 
             # Check one level down
             for item in cwd.iterdir():
-                print(f"autodebugger: checking {item}")
                 if item.is_dir() and not item.name.startswith('.'):
                     tests_dir = item / "tests"
-                    print(f"autodebugger: looking for {tests_dir}")
                     if tests_dir.is_dir():
                         rel_path = str(item.name / Path("tests"))
-                        print(f"autodebugger: found tests in {rel_path}")
                         test_paths.append(rel_path)
             
             print(f"autodebugger: found test paths: {test_paths}")
@@ -197,11 +192,11 @@ def run_pytest(args):
             
         # Add default parallel execution if not specified
         if not any(arg.startswith('-n') or arg.startswith('--numprocesses') for arg in pytest_args):
-            pytest_args.extend(['-n', 'auto'])  # Default to parallel
+            pytest_args.extend(['-n', 'auto', '-q', '--tb=short'])  # Default to parallel with clean output
             
             # Add worksteal distribution for better handling of test duration differences
             if not any(arg.startswith('--dist') for arg in pytest_args):
-                pytest_args.extend(['--dist=worksteal'])
+                pytest_args.extend(['--dist=worksteal', '--maxprocesses', '0'])
             
             # Set maxprocesses based on test count
             cpu_count = os.cpu_count() or 4  # Default to 4 if cpu_count() returns None
@@ -217,8 +212,18 @@ def run_pytest(args):
         
         # Run tests with pytest
         all_pytest_args = test_paths + pytest_args
-        print(f"autodebugger: running tests with pytest args: {' '.join(all_pytest_args)}")
-        sys.exit(pytest.main(all_pytest_args))
+        print(f"autodebugger: running tests with pytest args - {' '.join(all_pytest_args)}")
+        result = pytest.main(all_pytest_args)
+        
+        # Print test logs
+        logger.print_test_logs()
+        
+        # Run post-test verifications
+        from autodebugger.testutil import run_post_test_verifications
+        if not run_post_test_verifications(logger, result):
+            sys.exit(1)
+            
+        sys.exit(result)
         
     except KeyboardInterrupt:
         print("\nautodebugger: interrupted by user")

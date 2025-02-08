@@ -7,34 +7,48 @@ from pathlib import Path
 import pytest
 
 from autodebugger.testutil import generate_test_dir
+from autodebugger.autodebugger_logger import logger
 
 
-def test_generate_test_dir():
+def test_generate_test_dir(request):
     """Test that test directory paths are correctly generated."""
+    logger.set_current_request(request)
+    logger.debug("Testing directory generation with default arguments")
+    
     # Test with default arguments
     path = generate_test_dir()
+    logger.debug(f"Generated path: {path}")
     assert isinstance(path, Path)
     assert path.parent == Path("/tmp")
     assert path.name.startswith("test_")
-    assert len(path.name) > 10  # Should include UUID
+    assert len(path.name) > 10  # Should include UUID - remember to move this back to 10 after testing test failures
     
     # Test with custom base directory
+    logger.debug("Testing with custom base directory /var/tmp")
     base_dir = Path("/var/tmp")
     path = generate_test_dir(base_dir=base_dir)
+    logger.debug(f"Generated path with custom base: {path}")
     assert path.parent == base_dir
     
     # Test with prefix
+    logger.debug("Testing with custom prefix 'mytest'")
     path = generate_test_dir(prefix="mytest")
+    logger.debug(f"Generated path with prefix: {path}")
     assert path.name.startswith("testmytest_")
     
     # Test with special characters in prefix
+    logger.debug("Testing with special characters in prefix")
     path = generate_test_dir(prefix="my/test with spaces")
+    logger.debug(f"Generated path with special chars: {path}")
     assert "/" not in path.name
     assert " " not in path.name
 
 
-def test_command_parsing():
+def test_command_parsing(request):
     """Test that command line arguments are correctly parsed."""
+    logger.set_current_request(request)
+    logger.debug("Testing command line argument parsing")
+    
     from autodebugger.cli import split_pytest_args
     
     test_cases = [
@@ -93,7 +107,9 @@ def test_command_parsing():
     ]
     
     for i, case in enumerate(test_cases):
+        logger.debug(f"Testing case {i + 1}: {case['args']}")
         autodebugger_args, pytest_args = split_pytest_args(case["args"])
+        logger.debug(f"Split result - autodebugger: {autodebugger_args}, pytest: {pytest_args}")
         assert autodebugger_args == case["expected"]["autodebugger"], \
             f"Case {i}: Autodebugger args mismatch.\nExpected: {case['expected']['autodebugger']}\nGot: {autodebugger_args}"
         assert pytest_args == case["expected"]["pytest"], \
