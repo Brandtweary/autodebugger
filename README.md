@@ -103,14 +103,19 @@ Here's an example showing how to use autodebugger in your tests:
 ```python
 import pytest
 from pathlib import Path
+from autodebugger.testutil import generate_test_dir
 
 class TestFileOperations:
     """Test suite for file operations."""
     
     @pytest.fixture(autouse=True)
-    def setup_test_file(self, tmp_path):
-        """Set up test file path for each test."""
-        self.test_dir = tmp_path
+    def setup_test_dir(self, request, tmp_path):
+        """Set up test directory with meaningful name."""
+        # Generate a unique test directory path using the test name as prefix
+        test_name = request.node.name.replace("[", "").replace("]", "")
+        self.test_dir = generate_test_dir(prefix=test_name)
+        
+        # tmp_path fixture creates the directory and handles cleanup
         self.file_path = self.test_dir / "test.txt"
         yield
         # Cleanup handled automatically by pytest
@@ -130,6 +135,10 @@ When contributing to autodebugger:
 
 1. Follow the naming convention: `test_*.py` for test files
 2. Use descriptive test names that reflect what is being tested
-3. Use pytest's `tmp_path` fixture for temporary test directories
+3. Use `generate_test_dir()` to create uniquely named test directories
 4. Add proper type hints and docstrings
 5. Tests are run in parallel by default - ensure your tests are isolated and don't interfere with each other
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
