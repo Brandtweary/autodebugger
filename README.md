@@ -20,14 +20,12 @@ The autodebugger can be installed directly from the source directory.
 Run all tests in all `tests/` directories (root and one level down):
 ```bash
 autodebugger
-# or with verbosity
-autodebugger -v
 ```
 
 Run all tests in a specific directory:
 ```bash
 autodebugger tests/
-# or with explicit subcommand
+# or with a specific subcommand
 autodebugger run-pytest tests/
 ```
 
@@ -66,6 +64,16 @@ Use automatic worker count (default behavior):
 ```bash
 autodebugger tests/ -n auto  # Uses CPU_COUNT/2 workers
 ```
+
+#### Fixtures in Parallel Mode
+
+pytest-xdist handles fixtures seamlessly in parallel execution:
+- Each worker process gets its own isolated fixture tree
+- Function and class-scoped fixtures are created fresh for each test
+- Session-scoped fixtures are created once per worker
+- Temporary directories (via `tmp_path` and `generate_test_dir`) are always unique and isolated
+
+This means you can freely use fixtures in your tests without worrying about parallel execution conflicts.
 
 ### Coverage
 
@@ -137,7 +145,7 @@ When contributing to autodebugger:
 2. Use descriptive test names that reflect what is being tested
 3. Use `generate_test_dir()` to create uniquely named test directories
 4. Add proper type hints and docstrings
-5. Tests are run in parallel by default - ensure your tests are isolated and don't interfere with each other
+5. Tests are run in parallel by default - ensure your tests don't have external dependencies or side effects that could interfere with parallel execution
 
 ## License
 
