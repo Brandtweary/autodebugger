@@ -1,12 +1,11 @@
-# Autodebugger
+# autodebugger
 
-A pytest-based test runner that provides enhanced test isolation and directory management.
+A debugging tool that augments test output for LLM debugging workflows. autodebugger performs code analysis after test runs to provide helpful context to users and LLM agents. Currently compatible with Python code and pytest, with potential for additional language support in the future.
 
 ## Features
 
-- **Test Directory Isolation**: Each test gets its own unique temporary directory via `PYTEST_BASE_TEMP`
-- **Clean Output**: Minimal verbosity, focusing on what matters
-- **Automatic Cleanup**: Temporary resources are cleaned up after each test
+- **Enhanced Test Output**: Provides rich context about test failures and code state
+- **Test Directory Isolation**: Each test gets its own unique temporary directory
 - **Full Pytest Compatibility**: All pytest arguments and plugins are supported
 - **Parallel Execution**: Built-in parallel test execution using pytest-xdist
 
@@ -18,7 +17,14 @@ The autodebugger can be installed directly from the source directory.
 
 ### Basic Usage
 
-Run all tests in the `tests` directory:
+Run all tests in all `tests/` directories (root and one level down):
+```bash
+autodebugger
+# or with verbosity
+autodebugger -v
+```
+
+Run all tests in a specific directory:
 ```bash
 autodebugger tests/
 # or with explicit subcommand
@@ -90,51 +96,40 @@ For a complete list of supported arguments, run:
 autodebugger --help
 ```
 
-## Best Practices
+## Example Test
 
-1. **Test Directory Management**
-   - Use `generate_test_dir()` from `testutil.py` to create test directories
-   - Access the base temp directory via `PYTEST_BASE_TEMP` environment variable
+Here's an example showing how to use autodebugger in your tests:
 
-2. **Resource Cleanup**
-   - Always use context managers (`with` statements) for file operations
-   - Use `try`/`finally` blocks to ensure cleanup runs even if tests fail
-
-Example:
 ```python
+import pytest
 from pathlib import Path
-from autodebugger.testutil import generate_test_dir
 
-def test_file_operations():
-    # Create unique test directory
-    test_dir = generate_test_dir()
-    file_path = test_dir / "test.txt"
+class TestFileOperations:
+    """Test suite for file operations."""
     
-    try:
-        # Perform test operations
-        with open(file_path, "w") as f:
+    @pytest.fixture(autouse=True)
+    def setup_test_file(self, tmp_path):
+        """Set up test file path for each test."""
+        self.test_dir = tmp_path
+        self.file_path = self.test_dir / "test.txt"
+        yield
+        # Cleanup handled automatically by pytest
+    
+    def test_write_and_read(self):
+        """Test basic file write and read operations."""
+        with open(self.file_path, "w") as f:
             f.write("test data")
             
-        # Verify results
-        with open(file_path, "r") as f:
+        with open(self.file_path, "r") as f:
             assert f.read() == "test data"
-    finally:
-        # Clean up is handled automatically by autodebugger
-        pass
 ```
 
 ## Contributing
 
-When adding new tests:
+When contributing to autodebugger:
 
 1. Follow the naming convention: `test_*.py` for test files
 2. Use descriptive test names that reflect what is being tested
-3. Keep tests focused and isolated
-4. Clean up all temporary resources
-5. Add proper type hints and docstrings
-
-## Development
-
-The autodebugger is designed to be extensible. It uses pytest's collection mechanism
-while providing its own execution and reporting infrastructure. This allows for features
-like parallel execution while maintaining compatibility with pytest's ecosystem.
+3. Use pytest's `tmp_path` fixture for temporary test directories
+4. Add proper type hints and docstrings
+5. Tests are run in parallel by default - ensure your tests are isolated and don't interfere with each other

@@ -102,7 +102,7 @@ def create_parser():
     # run-pytest command
     run_pytest_parser = subparsers.add_parser("run-pytest",
                                            help="Run tests with pytest")
-    run_pytest_parser.add_argument("test_paths", nargs="*", default=["tests"],
+    run_pytest_parser.add_argument("test_paths", nargs="*",
                                 help="Paths to test files or directories")
     
     return parser
@@ -141,8 +141,35 @@ def run_pytest(args):
         parser = create_parser()
         args = parser.parse_args(["run-pytest"] + autodebugger_args)
         
-        test_paths = args.test_paths or ["tests"]
-        
+        # If no test paths provided or only default "tests", find all tests/ directories
+        if not args.test_paths or (len(args.test_paths) == 1 and args.test_paths[0] == "tests"):
+            cwd = Path.cwd()
+            test_paths = []
+            print(f"autodebugger: searching for tests in {cwd}")
+            
+            # Check root level tests/
+            if (cwd / "tests").is_dir():
+                print(f"autodebugger: found root tests/ directory")
+                test_paths.append("tests")
+                
+            # Check one level down
+            for item in cwd.iterdir():
+                print(f"autodebugger: checking {item}")
+                if item.is_dir() and not item.name.startswith('.'):
+                    tests_dir = item / "tests"
+                    print(f"autodebugger: looking for {tests_dir}")
+                    if tests_dir.is_dir():
+                        rel_path = str(item.name / Path("tests"))
+                        print(f"autodebugger: found tests in {rel_path}")
+                        test_paths.append(rel_path)
+            
+            print(f"autodebugger: found test paths: {test_paths}")
+            if not test_paths:
+                print("autodebugger: error - No test directories found")
+                sys.exit(1)
+        else:
+            test_paths = args.test_paths
+            
         # Check if test paths exist, accounting for pytest's :: syntax
         valid_paths = False
         for p in test_paths:
@@ -200,15 +227,11 @@ def run_pytest(args):
 
 def main() -> int:
     """Main entry point for autodebugger CLI."""
-    if len(sys.argv) < 2:
+    if sys.argv[1:] and (sys.argv[1] == "--help" or sys.argv[1] == "-h"):
         print_help()
         return 0
         
-    if sys.argv[1] == "--help" or sys.argv[1] == "-h":
-        print_help()
-        return 0
-        
-    if sys.argv[1] == "run-pytest":
+    if sys.argv[1:] and sys.argv[1] == "run-pytest":
         run_pytest(sys.argv[2:])
     else:
         run_pytest(sys.argv[1:])
