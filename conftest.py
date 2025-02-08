@@ -34,16 +34,19 @@ def test_dir_name(request):
 
 
 def pytest_configure(config: Config) -> None:
-    """Configure pytest for autodebugger."""
+    """Configure pytest."""
     # Register custom markers
     config.addinivalue_line(
         "markers",
         "log_level(level): Set the log level for a specific test"
     )
     
-    # Configure verbosity based on -v flag only
-    verbose = bool(config.getoption('verbose'))  # Convert to bool to avoid type error
-    logger.set_verbosity(verbose=verbose)
+    # Set up autodebugger logger
+    logger.set_shared_dir(str(Path(config.rootpath) / ".pytest_cache"))
+    
+    # Set worker ID for xdist
+    worker_id = os.environ.get('PYTEST_XDIST_WORKER')
+    logger.set_worker_id(worker_id)
     
     # Initialize shared directory in main process only
     if not hasattr(config, 'workerinput'):  # We're in the main process

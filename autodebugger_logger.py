@@ -111,12 +111,12 @@ class AutodebuggerLogger:
         return cls._instance
 
     def __init__(self):
+        """Initialize the logger."""
         if getattr(self, 'initialized', False):
             return
         
         self.collector = LogCollector()
         self.current_request = None
-        self.verbose = False
         self.initialized = True
 
     def set_worker_id(self, worker_id: Optional[str]) -> None:
@@ -134,10 +134,6 @@ class AutodebuggerLogger:
     def set_current_request(self, request) -> None:
         """Set the current test request."""
         self.current_request = request
-
-    def set_verbosity(self, verbose: bool = False) -> None:
-        """Set verbosity level."""
-        self.verbose = verbose
 
     def set_shared_dir(self, shared_dir: str) -> None:
         """Set the shared directory for IPC."""
@@ -174,22 +170,22 @@ class AutodebuggerLogger:
         """Log a critical message."""
         self.log(message, LogLevel.CRITICAL)
 
-    def get_all_logs(self) -> Dict[str, Dict[str, List[str]]]:
+    def get_all_logs(self) -> Dict[str, LogEntry]:
         """Get all logs."""
-        return self.collector.get_all_logs()
+        return self.collector.logs
 
-    def get_filtered_logs(self) -> Dict[str, List[str]]:
+    def get_filtered_logs(self, no_capture: bool = False) -> Dict[str, List[str]]:
         """Get filtered logs based on test status.
         
         Filtering rules:
         1. Failed tests: Show all logs (including DEBUG)
-        2. Passed tests: Show only WARNING and above, even in verbose mode
-        3. INFO logs only shown with -s flag (not implemented yet)
+        2. Passed tests with no_capture: Show all logs
+        3. Passed tests: Show only WARNING and above
         """
         filtered = {}
         for test_id, entry in self.collector.logs.items():
-            # For failed tests, show all logs
-            show_all = test_id in self.failed_tests
+            # Show all logs for failed tests or when in no_capture mode
+            show_all = test_id in self.failed_tests or no_capture
             
             # Filter messages based on level and test status
             messages = []
@@ -202,10 +198,12 @@ class AutodebuggerLogger:
                 
         return filtered
 
-    def print_test_logs(self) -> None:
+    def print_test_logs(self, no_capture: bool = False) -> None:
         """Print all test logs in a formatted way.
         
-        This is the main interface for displaying logs after tests finish.
+        Args:
+            no_capture: If True, show all log levels for all tests, similar to pytest's -s flag
+        
         Format:
         ================================== test logs ==================================
         
@@ -216,7 +214,7 @@ class AutodebuggerLogger:
         test_name2.py::test_function2 PASSED
             WARNING: warning message
         """
-        filtered_logs = self.get_filtered_logs()
+        filtered_logs = self.get_filtered_logs(no_capture=no_capture)
         if not filtered_logs:
             return
             

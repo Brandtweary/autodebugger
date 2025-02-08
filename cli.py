@@ -215,8 +215,9 @@ def run_pytest(args):
         print(f"autodebugger: running tests with pytest args - {' '.join(all_pytest_args)}")
         result = pytest.main(all_pytest_args)
         
-        # Print test logs
-        logger.print_test_logs()
+        # Print test logs - pass no_capture flag if -s is present
+        no_capture = '-s' in pytest_args or '--capture=no' in pytest_args
+        logger.print_test_logs(no_capture=no_capture)
         
         # Run post-test verifications
         from autodebugger.testutil import run_post_test_verifications

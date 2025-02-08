@@ -25,8 +25,6 @@ autodebugger
 Run all tests in a specific directory:
 ```bash
 autodebugger tests/
-# or with a specific subcommand
-autodebugger run-pytest tests/
 ```
 
 Run a specific test file:
@@ -34,16 +32,26 @@ Run a specific test file:
 autodebugger tests/test_specific.py
 ```
 
-### Advanced Usage
-
 Run tests with increased verbosity:
 ```bash
-autodebugger tests -v
+autodebugger -v
+```
+
+### Advanced Usage
+
+Run tests with no capture:
+```bash
+autodebugger -s
 ```
 
 Run tests matching a pattern:
 ```bash
 autodebugger -k "test_pattern" tests/
+```
+
+Run a specific subcommand:
+```bash
+autodebugger run-pytest  # run-pytest is the default subcommand
 ```
 
 ### Parallel Execution
@@ -95,12 +103,13 @@ The autodebugger provides a logging system that integrates with pytest's output 
 - Automatically show all logs for failed tests
 - Control log visibility based on pytest verbosity flags
 
-The logger has three visibility modes:
+The logger has two visibility modes:
 - Default: Only WARNING and above are shown
-- Verbose (`-v`): INFO and above are shown
 - No Capture (`-s`): All messages are shown (disables output capture)
 
 For failed tests, all log messages are shown regardless of mode to help with debugging.
+
+The `-v` flag increases pytest's output verbosity but does not affect the logger's behavior.
 
 ## Integration with pytest
 

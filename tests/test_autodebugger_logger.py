@@ -61,8 +61,7 @@ def test_log_filtering(request):
         logger.warning("Warning message")
         logger.error("Error message")
         
-        # For passed tests, only WARNING and above should be shown, even in verbose mode
-        logger.set_verbosity(verbose=True)
+        # For passed tests, only WARNING and above should be shown
         logs = logger.get_filtered_logs()
         assert test_id in logs
         assert len(logs[test_id]) == 2  # Only warning and error
@@ -80,9 +79,20 @@ def test_log_filtering(request):
         assert "INFO: Info message" in logs[test_id]
         assert "WARNING: Warning message" in logs[test_id]
         assert "ERROR: Error message" in logs[test_id]
+        
+        # Clean up failed test state
+        logger.failed_tests.remove(test_id)
+        
+        # For no_capture mode, all logs should be shown even for passing tests
+        logs = logger.get_filtered_logs(no_capture=True)
+        assert test_id in logs
+        assert len(logs[test_id]) == 4  # All messages
+        assert "DEBUG: Debug message" in logs[test_id]
+        assert "INFO: Info message" in logs[test_id]
+        assert "WARNING: Warning message" in logs[test_id]
+        assert "ERROR: Error message" in logs[test_id]
     finally:
         # Clean up
-        logger.failed_tests.remove(test_id)
         logger.collector.clear()  # Clear all logs
 
 
@@ -254,4 +264,3 @@ def test_multiprocess_logging(request):
         # Verify failed test was tracked
         assert "test_worker1" in logger.failed_tests
         assert "test_worker2" not in logger.failed_tests
-        

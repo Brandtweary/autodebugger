@@ -21,7 +21,7 @@ def test_generate_test_dir(request):
     assert isinstance(path, Path)
     assert path.parent == Path("/tmp")
     assert path.name.startswith("test_")
-    assert len(path.name) > 10  # Should include UUID - remember to move this back to 10 after testing test failures
+    assert len(path.name) > 10  # Should include UUID
     
     # Test with custom base directory
     logger.debug("Testing with custom base directory /var/tmp")
