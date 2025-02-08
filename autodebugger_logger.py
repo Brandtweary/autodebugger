@@ -174,13 +174,14 @@ class AutodebuggerLogger:
         """Get all logs."""
         return self.collector.logs
 
-    def get_filtered_logs(self, no_capture: bool = False) -> Dict[str, List[str]]:
+    def get_filtered_logs(self, no_capture: bool = False, show_info: bool = False) -> Dict[str, List[str]]:
         """Get filtered logs based on test status.
         
         Filtering rules:
         1. Failed tests: Show all logs (including DEBUG)
         2. Passed tests with no_capture: Show all logs
-        3. Passed tests: Show only WARNING and above
+        3. Passed tests with show_info: Show INFO and above
+        4. Passed tests: Show only WARNING and above
         """
         filtered = {}
         for test_id, entry in self.collector.logs.items():
@@ -190,7 +191,9 @@ class AutodebuggerLogger:
             # Filter messages based on level and test status
             messages = []
             for msg, level in zip(entry.messages, entry.levels):
-                if show_all or level in (LogLevel.WARNING, LogLevel.ERROR, LogLevel.CRITICAL):
+                if (show_all or 
+                    level in (LogLevel.WARNING, LogLevel.ERROR, LogLevel.CRITICAL) or
+                    (show_info and level == LogLevel.INFO)):
                     messages.append(f"{level.name}: {msg}")
             
             if messages:
@@ -198,11 +201,12 @@ class AutodebuggerLogger:
                 
         return filtered
 
-    def print_test_logs(self, no_capture: bool = False) -> None:
+    def print_test_logs(self, no_capture: bool = False, show_info: bool = False) -> None:
         """Print all test logs in a formatted way.
         
         Args:
             no_capture: If True, show all log levels for all tests, similar to pytest's -s flag
+            show_info: If True, show INFO and above for all tests, similar to pytest's -i flag
         
         Format:
         ================================== test logs ==================================
@@ -214,7 +218,7 @@ class AutodebuggerLogger:
         test_name2.py::test_function2 PASSED
             WARNING: warning message
         """
-        filtered_logs = self.get_filtered_logs(no_capture=no_capture)
+        filtered_logs = self.get_filtered_logs(no_capture=no_capture, show_info=show_info)
         if not filtered_logs:
             return
             

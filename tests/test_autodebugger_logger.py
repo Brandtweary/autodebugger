@@ -83,6 +83,15 @@ def test_log_filtering(request):
         # Clean up failed test state
         logger.failed_tests.remove(test_id)
         
+        # For info mode, INFO and above should be shown
+        logs = logger.get_filtered_logs(show_info=True)
+        assert test_id in logs
+        assert len(logs[test_id]) == 3  # INFO, WARNING, and ERROR
+        assert "DEBUG: Debug message" not in logs[test_id]
+        assert "INFO: Info message" in logs[test_id]
+        assert "WARNING: Warning message" in logs[test_id]
+        assert "ERROR: Error message" in logs[test_id]
+        
         # For no_capture mode, all logs should be shown even for passing tests
         logs = logger.get_filtered_logs(no_capture=True)
         assert test_id in logs

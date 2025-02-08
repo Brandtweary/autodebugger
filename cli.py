@@ -57,6 +57,9 @@ def split_pytest_args(args: List[str]) -> Tuple[List[str], List[str]]:
         -s: Shortcut for --capture=no
         -n, --numprocesses: Number of worker processes for parallel testing
         
+    Autodebugger arguments:
+        -i, --info: Show INFO and above log levels in test output
+        
     Args:
         args: List of command line arguments
         
@@ -76,6 +79,12 @@ def split_pytest_args(args: List[str]) -> Tuple[List[str], List[str]]:
             i += 1
             continue
             
+        # Handle autodebugger flags
+        if arg in ('-i', '--info'):
+            autodebugger_args.append(arg)
+            i += 1
+            continue
+            
         # Check for test paths (either exists or looks like a test path)
         # Handle pytest's :: syntax for specific test functions
         base_path = arg.split('::')[0] if '::' in arg else arg
@@ -86,26 +95,12 @@ def split_pytest_args(args: List[str]) -> Tuple[List[str], List[str]]:
             autodebugger_args.append(arg)
             i += 1
             continue
-        # All other args go to pytest
             
+        # All other args go to pytest
         pytest_args.append(arg)
         i += 1
         
     return autodebugger_args, pytest_args
-
-
-def create_parser():
-    """Create argument parser for autodebugger CLI."""
-    parser = argparse.ArgumentParser(description="Enhanced pytest runner with test isolation")
-    subparsers = parser.add_subparsers(dest="command")
-    
-    # run-pytest command
-    run_pytest_parser = subparsers.add_parser("run-pytest",
-                                           help="Run tests with pytest")
-    run_pytest_parser.add_argument("test_paths", nargs="*",
-                                help="Paths to test files or directories")
-    
-    return parser
 
 
 def print_help():
@@ -137,12 +132,11 @@ def run_pytest(args):
         # Split remaining args into autodebugger and pytest args
         autodebugger_args, pytest_args = split_pytest_args(args)
         
-        # Parse autodebugger args
-        parser = create_parser()
-        args = parser.parse_args(["run-pytest"] + autodebugger_args)
+        # Get test paths from autodebugger args
+        test_paths = [arg for arg in autodebugger_args if not arg.startswith('-')]
         
         # If no test paths provided or only default "tests", find all tests/ directories
-        if not args.test_paths or (len(args.test_paths) == 1 and args.test_paths[0] == "tests"):
+        if not test_paths or (len(test_paths) == 1 and test_paths[0] == "tests"):
             cwd = Path.cwd()
             test_paths = []
 
@@ -162,8 +156,6 @@ def run_pytest(args):
             if not test_paths:
                 print("autodebugger: error - No test directories found")
                 sys.exit(1)
-        else:
-            test_paths = args.test_paths
             
         # Check if test paths exist, accounting for pytest's :: syntax
         valid_paths = False
@@ -210,14 +202,15 @@ def run_pytest(args):
                 pytest_args = [arg for arg in pytest_args if not arg.startswith('--dist')]
                 pytest_args.extend(['--dist=loadfile'])
         
-        # Run tests with pytest
+        # Run tests with pytest - only pass test paths and pytest args
         all_pytest_args = test_paths + pytest_args
         print(f"autodebugger: running tests with pytest args - {' '.join(all_pytest_args)}")
         result = pytest.main(all_pytest_args)
         
-        # Print test logs - pass no_capture flag if -s is present
+        # Print test logs - pass no_capture and show_info flags
         no_capture = '-s' in pytest_args or '--capture=no' in pytest_args
-        logger.print_test_logs(no_capture=no_capture)
+        show_info = '-i' in autodebugger_args or '--info' in autodebugger_args
+        logger.print_test_logs(no_capture=no_capture, show_info=show_info)
         
         # Run post-test verifications
         from autodebugger.testutil import run_post_test_verifications
