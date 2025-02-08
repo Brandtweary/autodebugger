@@ -37,9 +37,14 @@ Run tests with increased verbosity:
 autodebugger -v
 ```
 
+Run tests with INFO logs shown:
+```bash
+autodebugger -i
+```
+
 ### Advanced Usage
 
-Run tests with no capture:
+Run tests with no capture (show all log levels):
 ```bash
 autodebugger -s
 ```
@@ -47,6 +52,11 @@ autodebugger -s
 Run tests matching a pattern:
 ```bash
 autodebugger -k "test_pattern" tests/
+```
+
+Run tests with coverage reporting:
+```bash
+autodebugger --cov=src
 ```
 
 Run a specific subcommand:
@@ -60,17 +70,17 @@ By default, tests run in parallel using pytest-xdist with half of your CPU cores
 
 Run tests sequentially:
 ```bash
-autodebugger tests/ -n 0
+autodebugger -n 0
 ```
 
 Run tests with a specific number of workers:
 ```bash
-autodebugger tests/ -n 4  # Use 4 workers
+autodebugger -n 4  # Use 4 workers
 ```
 
 Use automatic worker count (default behavior):
 ```bash
-autodebugger tests/ -n auto  # Uses CPU_COUNT/2 workers
+autodebugger -n auto  # Uses CPU_COUNT/2 workers
 ```
 
 #### Fixtures in Parallel Mode
@@ -83,15 +93,6 @@ pytest-xdist handles fixtures seamlessly in parallel execution:
 
 This means you can freely use fixtures in your tests without worrying about parallel execution conflicts.
 
-### Coverage
-
-Run tests with coverage reporting:
-```bash
-autodebugger tests --cov=src
-```
-
-Coverage works seamlessly with parallel execution. When using `--cov`, tests are automatically distributed by file to avoid coverage conflicts.
-
 ### Environment Variables
 
 - `PYTEST_BASE_TEMP`: Base directory for test temporary directories (default: `/tmp`)
@@ -101,14 +102,14 @@ Coverage works seamlessly with parallel execution. When using `--cov`, tests are
 The autodebugger provides a logging system that integrates with pytest's output capture. This allows you to:
 - Log messages at different severity levels (DEBUG, INFO, WARNING, etc.)
 - Automatically show all logs for failed tests
-- Control log visibility based on pytest verbosity flags
+- Control log visibility based on flags
 
 The logger has three visibility modes:
 - Default: Only WARNING and above are shown
 - Info (`-i`): INFO and above are shown
-- No Capture (`-s`): All messages are shown (disables output capture)
+- No Capture (`-s`): All log levels are shown
 
-For failed tests, all log messages are shown regardless of mode to help with debugging.
+For failed tests, all log messages are shown regardless of mode.
 
 The `-v` flag increases pytest's output verbosity but does not affect the logger's behavior.
 
@@ -136,6 +137,7 @@ Here's an example showing how to use autodebugger in your tests:
 import pytest
 from pathlib import Path
 from autodebugger.testutil import generate_test_dir
+from autodebugger.autodebugger_logger import logger
 
 class TestFileOperations:
     """Test suite for file operations."""
@@ -143,22 +145,50 @@ class TestFileOperations:
     @pytest.fixture(autouse=True)
     def setup_test_dir(self, request, tmp_path):
         """Set up test directory with meaningful name."""
+        # Set up logging for this test
+        logger.set_current_request(request)
+        logger.debug("Setting up test directory")
+        
         # Generate a unique test directory path using the test name as prefix
         test_name = request.node.name.replace("[", "").replace("]", "")
         self.test_dir = generate_test_dir(prefix=test_name)
+        logger.info(f"Created test directory: {self.test_dir}")
         
         # tmp_path fixture creates the directory and handles cleanup
         self.file_path = self.test_dir / "test.txt"
+        logger.debug(f"Test file path: {self.file_path}")
         yield
+        
         # Cleanup handled automatically by pytest
+        logger.debug("Test directory cleanup starting")
     
-    def test_write_and_read(self):
+    def test_write_and_read(self, request):
         """Test basic file write and read operations."""
-        with open(self.file_path, "w") as f:
-            f.write("test data")
+        logger.set_current_request(request)
+        
+        # Write test data
+        test_data = "test data"
+        logger.info(f"Writing data to {self.file_path}")
+        try:
+            with open(self.file_path, "w") as f:
+                f.write(test_data)
+        except IOError as e:
+            logger.error(f"Failed to write to file: {e}")
+            raise
             
-        with open(self.file_path, "r") as f:
-            assert f.read() == "test data"
+        # Read and verify
+        logger.debug("Reading back written data")
+        try:
+            with open(self.file_path, "r") as f:
+                content = f.read()
+                if content != test_data:
+                    logger.warning(f"Content mismatch - Expected: {test_data}, Got: {content}")
+                assert content == test_data
+        except IOError as e:
+            logger.error(f"Failed to read from file: {e}")
+            raise
+        
+        logger.info("File operations completed successfully")
 ```
 
 ## Contributing
