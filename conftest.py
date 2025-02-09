@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 from autodebugger.autodebugger_logger import logger
 from autodebugger.testutil import generate_test_dir
 
+# Track if we've already registered autodebugger fixtures
+AUTODEBUGGER_REGISTERED = False
 
 @pytest.fixture
 def test_dir_name(request):
@@ -35,6 +37,16 @@ def test_dir_name(request):
 
 def pytest_configure(config: Config) -> None:
     """Configure pytest."""
+    global AUTODEBUGGER_REGISTERED
+    
+    # Always allow registration in worker processes
+    if hasattr(config, 'workerinput'):
+        AUTODEBUGGER_REGISTERED = False
+    elif AUTODEBUGGER_REGISTERED:
+        return
+        
+    AUTODEBUGGER_REGISTERED = True
+    
     # Register custom markers
     config.addinivalue_line(
         "markers",

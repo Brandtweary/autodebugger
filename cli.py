@@ -35,7 +35,6 @@ Environment Variables:
     PYTEST_BASE_TEMP: Base directory for test temporary directories
                      Default: /tmp
 """
-import argparse
 import os
 import sys
 from pathlib import Path
@@ -43,6 +42,7 @@ from typing import List, Tuple
 
 import pytest
 from autodebugger.autodebugger_logger import logger
+from autodebugger.testutil import ensure_conftest_exists
 
 def split_pytest_args(args: List[str]) -> Tuple[List[str], List[str]]:
     """Split arguments into autodebugger args and pytest args.
@@ -205,6 +205,10 @@ def run_pytest(args):
         # Run tests with pytest - only pass test paths and pytest args
         all_pytest_args = test_paths + pytest_args
         print(f"autodebugger: running tests with pytest args - {' '.join(all_pytest_args)}")
+        
+        # Ensure conftest.py exists for test logging
+        ensure_conftest_exists(test_paths)
+        
         result = pytest.main(all_pytest_args)
         
         # Print test logs - pass no_capture and show_info flags

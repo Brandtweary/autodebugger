@@ -129,6 +129,28 @@ For a complete list of supported arguments, run:
 autodebugger --help
 ```
 
+## Test Configuration and conftest.py
+
+When running tests with autodebugger, it requires certain pytest fixtures and hooks to be present in order to capture test logs. To handle this, autodebugger will automatically create a `conftest.py` file in your working directory (where you run the `autodebugger` command from).
+
+### Existing conftest.py Files
+
+If you already have a `conftest.py` file in your project, you have two options:
+
+1. **Remove your conftest.py**: Let autodebugger manage the test configuration. This is the simplest approach if you don't have custom fixtures or hooks.
+
+2. **Import autodebugger's fixtures**: If you need to keep your own `conftest.py`, you can import autodebugger's fixtures:
+
+```python
+# In your conftest.py
+from autodebugger.conftest import *  # Import autodebugger's fixtures
+
+# Your custom fixtures and hooks below
+@pytest.fixture
+def my_custom_fixture():
+    ...
+```
+
 ## Example Test
 
 Here's an example showing how to use autodebugger in your tests:
