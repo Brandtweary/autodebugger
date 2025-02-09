@@ -23,7 +23,9 @@ def test_log_writing(request):
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Set up logger
         logger.set_shared_dir(tmp_dir)
-        logger.set_worker_id("worker1")
+        # Get actual worker ID from xdist or use a default
+        worker_id = os.environ.get('PYTEST_XDIST_WORKER', 'gw0')
+        logger.set_worker_id(worker_id)
         logger.set_current_request(request)
         
         # Write some logs
@@ -34,7 +36,7 @@ def test_log_writing(request):
         logger.sync_logs()
         
         # Verify log file exists and contains correct data
-        worker_dir = os.path.join(tmp_dir, "worker1")
+        worker_dir = os.path.join(tmp_dir, worker_id)
         assert os.path.isdir(worker_dir)
         
         log_file = os.path.join(worker_dir, "logs.json")
@@ -42,8 +44,8 @@ def test_log_writing(request):
         
         with open(log_file) as f:
             log_data = json.load(f)
-            assert request.node.nodeid in log_data
-            test_logs = log_data[request.node.nodeid]
+            assert request.node.nodeid in log_data['test_logs']  # Updated to match new format
+            test_logs = log_data['test_logs'][request.node.nodeid]
             assert len(test_logs['messages']) == 2
             assert test_logs['messages'] == ["Test debug", "Test error"]
             assert test_logs['levels'] == [LogLevel.DEBUG.name, LogLevel.ERROR.name]
