@@ -139,17 +139,14 @@ If you already have a `conftest.py` file in your project, you have two options:
 
 1. **Remove your conftest.py**: Let autodebugger manage the test configuration. This is the simplest approach if you don't have custom fixtures or hooks.
 
-2. **Import autodebugger's fixtures**: If you need to keep your own `conftest.py`, you can import autodebugger's fixtures:
+2. **Import autodebugger's hooks**: If you need to keep your own `conftest.py`, simply import autodebugger's hooks:
 
 ```python
-# In your conftest.py
-from autodebugger.conftest import *  # Import autodebugger's fixtures
-
-# Your custom fixtures and hooks below
-@pytest.fixture
-def my_custom_fixture():
-    ...
+# Import autodebugger's hooks and fixtures
+from autodebugger.conftest import *
 ```
+
+That's it! The hooks will be automatically registered with pytest.
 
 ## Example Test
 
