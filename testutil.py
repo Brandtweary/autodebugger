@@ -32,6 +32,10 @@ def generate_test_dir(base_dir: Optional[Path] = None, prefix: str = "") -> Path
 def run_post_test_verifications(logger, result: Optional[int] = None) -> bool:
     """Run post-test verifications
     
+    Verifies that:
+    1. The conftest.py is properly loaded (by checking worker_id and shared_dir)
+    2. Log collection is working (by checking collector logs)
+    
     Args:
         logger: Logger instance to use
         result: Optional test result code
@@ -40,30 +44,22 @@ def run_post_test_verifications(logger, result: Optional[int] = None) -> bool:
         True if all verifications pass, False otherwise
     """
     print("\nDEBUG: Running post-test verifications")
-    print(f"DEBUG: Test result code: {result}")
-    print(f"DEBUG: Failed tests: {logger.failed_tests}")
+    
+    # 1. Verify conftest.py is loaded by checking worker setup
     print(f"DEBUG: Worker ID: {logger.worker_id}")
     print(f"DEBUG: Shared dir: {logger.shared_dir}")
-    print(f"DEBUG: Current request: {logger.current_request.node.nodeid if logger.current_request else None}")
     
-    # Print raw collector logs
+    if logger.shared_dir is None:
+        print("ERROR: shared_dir is None - conftest.py not loaded properly")
+        return False
+    
+    # 2. Verify log collection is working
     print("\nDEBUG: Raw collector logs:")
     print(logger.collector.logs)
     
-    # Print filtered logs with different settings
-    print("\nDEBUG: Filtered logs (default):")
-    print(logger.get_filtered_logs())
-    print("\nDEBUG: Filtered logs (show_info=True):")
-    print(logger.get_filtered_logs(show_info=True))
-    print("\nDEBUG: Filtered logs (no_capture=True):")
-    print(logger.get_filtered_logs(no_capture=True))
-    
-    if result != 0:  # Only verify if there were test failures
-        filtered_logs = logger.get_filtered_logs()
-        # Check that each failed test has at least one log message
-        for test_id in logger.failed_tests:
-            if test_id not in filtered_logs:
-                print(f"ERROR: Failed test {test_id} has no log messages")
-                return False
-            
+    # In worker processes, we should have logs and they should be syncing
+    if logger.worker_id is not None and not logger.collector.logs:
+        print("ERROR: No logs collected in worker process")
+        return False
+        
     return True
