@@ -13,7 +13,7 @@ from autodebugger.autodebugger_logger import logger
 def test_generate_test_dir(request):
     """Test that test directory paths are correctly generated."""
     logger.set_current_request(request)
-    logger.debug("Testing directory generation with default arguments")
+    logger.info("Testing directory generation with default arguments")
     
     # Test with default arguments
     path = generate_test_dir()
@@ -102,6 +102,22 @@ def test_command_parsing(request):
             "expected": {
                 "autodebugger": ["tests/test_1.py", "tests/test_2.py"],
                 "pytest": ["-v", "-n", "0"]
+            }
+        },
+        # Test autodebugger -i flag
+        {
+            "args": ["tests/test_file.py", "-v", "-i"],
+            "expected": {
+                "autodebugger": ["tests/test_file.py", "-i"],
+                "pytest": ["-v"]
+            }
+        },
+        # Test autodebugger --info flag after another flag
+        {
+            "args": ["tests/test_file.py", "-v", "--info"],
+            "expected": {
+                "autodebugger": ["tests/test_file.py", "--info"],
+                "pytest": ["-v"]
             }
         }
     ]

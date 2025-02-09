@@ -4,6 +4,39 @@ Logger module for autodebugger that provides test output capture and management.
 This module provides a centralized logging system for test output that integrates
 with pytest's output capture system. It stores logs during test execution and
 can selectively display them based on test outcomes and verbosity settings.
+
+Important: Only use logging within test functions, not in fixtures. Logs in fixtures
+will not be captured since they are not associated with a specific test. If you need
+to log setup information, do it at the start of each test function.
+
+Example usage in tests:
+```python
+from autodebugger.autodebugger_logger import logger
+
+def test_my_feature(request):
+    # Associate logs with this test - required at the start of each test
+    logger.set_current_request(request)
+    
+    # Log messages at different levels
+    logger.debug("Setting up test data...")
+    logger.info("Processing feature X")
+    
+    result = process_data()
+    if result.has_warnings:
+        logger.warning(f"Warning in data: {result.warning_msg}")
+    
+    try:
+        assert result.is_valid
+    except AssertionError:
+        logger.error(f"Validation failed: {result.error_details}")
+        raise
+```
+
+The logs will be displayed based on test outcome and verbosity:
+- Failed tests show all log levels
+- Passed tests show WARNING and above by default
+- Use autodebugger -i to see INFO logs
+- Use autodebugger -s to see all logs including DEBUG
 """
 
 import logging
@@ -330,8 +363,3 @@ def autodebugger_logger_context(request: FixtureRequest):
 @pytest.fixture(autouse=True)
 def autodebugger_logger_fixture():
     return autodebugger_logger_context
-
-
-def pytest_configure(config: Config) -> None:
-    """Configure pytest plugin."""
-    config.pluginmanager.register(AutodebuggerLogger(), "autodebugger_logger")

@@ -73,13 +73,7 @@ def split_pytest_args(args: List[str]) -> Tuple[List[str], List[str]]:
     while i < len(args):
         arg = args[i]
         
-        # Check if this is a value for a previous flag (like -k "test_pattern")
-        if i > 0 and args[i-1].startswith('-'):
-            pytest_args.append(arg)
-            i += 1
-            continue
-            
-        # Handle autodebugger flags
+        # Handle autodebugger flags first
         if arg in ('-i', '--info'):
             autodebugger_args.append(arg)
             i += 1
@@ -93,6 +87,12 @@ def split_pytest_args(args: List[str]) -> Tuple[List[str], List[str]]:
             ('tests/' in arg or arg.endswith('.py'))  # Looks like a test path
         ):
             autodebugger_args.append(arg)
+            i += 1
+            continue
+            
+        # Check if this is a value for a previous flag (like -k "test_pattern")
+        if i > 0 and args[i-1].startswith('-'):
+            pytest_args.append(arg)
             i += 1
             continue
             

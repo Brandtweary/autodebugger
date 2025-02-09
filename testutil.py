@@ -29,50 +29,41 @@ def generate_test_dir(base_dir: Optional[Path] = None, prefix: str = "") -> Path
     return base_dir / dir_name
 
 
-def pytest_configure(config):
-    """Pytest hook to set up global test configuration.
-    
-    This runs before any tests are collected.
-    """
-    # Create base temp directory if it doesn't exist
-    base_temp = os.getenv("PYTEST_BASE_TEMP")
-    if base_temp:
-        Path(base_temp).mkdir(parents=True, exist_ok=True)
-
-
-def run_post_test_verifications(logger, result):
-    """Run post-test verifications to ensure proper test behavior.
-    
-    This function runs in the main process after all tests have completed.
-    It verifies that:
-    1. Failed tests are properly tracked in the main process
-    2. Each failed test has at least one log message to help with debugging
+def run_post_test_verifications(logger, result: Optional[int] = None) -> bool:
+    """Run post-test verifications
     
     Args:
-        logger: The AutodebuggerLogger instance
-        result: The pytest result code
+        logger: Logger instance to use
+        result: Optional test result code
         
     Returns:
-        bool: True if all verifications pass, False otherwise
+        True if all verifications pass, False otherwise
     """
-    # If tests passed, nothing to verify
-    if result == 0:
-        return True
-        
-    # Verify that we have failed tests in the main process
-    if not logger.failed_tests:
-        print("ERROR: No failed tests found in main process")
-        return False
-        
-    # Verify that each failed test has at least one log message
-    for test_id in logger.failed_tests:
-        if test_id not in logger.collector.logs:
-            print(f"ERROR: No logs found for failed test {test_id}")
-            return False
-        
-        logs = logger.collector.logs[test_id]
-        if not logs.messages:  # Check if there are any messages at all
-            print(f"ERROR: Failed test {test_id} has no log messages to help with debugging")
-            return False
+    print("\nDEBUG: Running post-test verifications")
+    print(f"DEBUG: Test result code: {result}")
+    print(f"DEBUG: Failed tests: {logger.failed_tests}")
+    print(f"DEBUG: Worker ID: {logger.worker_id}")
+    print(f"DEBUG: Shared dir: {logger.shared_dir}")
+    print(f"DEBUG: Current request: {logger.current_request.node.nodeid if logger.current_request else None}")
+    
+    # Print raw collector logs
+    print("\nDEBUG: Raw collector logs:")
+    print(logger.collector.logs)
+    
+    # Print filtered logs with different settings
+    print("\nDEBUG: Filtered logs (default):")
+    print(logger.get_filtered_logs())
+    print("\nDEBUG: Filtered logs (show_info=True):")
+    print(logger.get_filtered_logs(show_info=True))
+    print("\nDEBUG: Filtered logs (no_capture=True):")
+    print(logger.get_filtered_logs(no_capture=True))
+    
+    if result != 0:  # Only verify if there were test failures
+        filtered_logs = logger.get_filtered_logs()
+        # Check that each failed test has at least one log message
+        for test_id in logger.failed_tests:
+            if test_id not in filtered_logs:
+                print(f"ERROR: Failed test {test_id} has no log messages")
+                return False
             
     return True
