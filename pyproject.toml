@@ -28,7 +28,7 @@ autodebugger = "autodebugger.cli:main"
 [tool.pytest.ini_options]
 testpaths = ["tests", "autodebugger/tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=autodebugger --cov-report=term-missing"
+addopts = "-v"
 
 [tool.hatch.build.targets.wheel]
 packages = ["autodebugger"]
