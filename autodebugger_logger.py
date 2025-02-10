@@ -51,7 +51,7 @@ from _pytest.fixtures import FixtureRequest
 from _pytest.logging import LogCaptureFixture
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Set, Protocol
-from multiprocessing import Queue
+from multiprocessing import Manager, Queue
 import multiprocessing
 import queue
 import json
@@ -132,45 +132,46 @@ class LogCollector:
 
 
 class AutodebuggerLogger:
-    """Logger for autodebugger."""
-    _instance = None
-    worker_id = None  # Track which worker process this is
-    failed_tests: Set[str] = set()
-    shared_dir = None  # Shared directory for IPC
+    """Logger for the autodebugger framework.
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    The logger collects logs from multiple test processes and combines them in the main
+    process for display. It handles both local and distributed test execution.
 
+    Note on Testing Strategy:
+    The logger is intentionally tested through integration rather than unit tests.
+    This is because it is a stateful singleton that must coordinate log collection
+    across multiple processes when running with pytest-xdist. Attempting to test it
+    in isolation leads to test pollution, as the logger's shared state (worker IDs,
+    shared directories, etc.) affects other tests running in parallel.
+
+    Instead, we verify the logger's behavior through actual usage in the test suite,
+    where we can observe that:
+    1. Logs are properly collected from worker processes
+    2. Failed tests show all log levels
+    3. Passing tests filter logs appropriately
+    """
+    
     def __init__(self):
-        """Initialize the logger."""
-        if getattr(self, 'initialized', False):
-            return
-        
+        """Initialize logger."""
         self.collector = LogCollector()
-        self.current_request = None
-        self.initialized = True
+        self.failed_tests = set()
+        self.shared_dir = None
+        self.worker_id = None
 
-    def set_worker_id(self, worker_id: Optional[str]) -> None:
-        """Set the worker ID for this process."""
-        # If switching from worker to main process, sync any remaining logs
-        if self.worker_id and worker_id is None:
-            self.sync_logs()
-        
-        self.worker_id = worker_id
-
-    def get_worker_id(self) -> Optional[str]:
-        """Get the worker ID for this process."""
-        return self.worker_id
+    def register(self, shared_dir: str | None = None, worker_id: str | None = None):
+        """Register logger with shared directory and worker id."""
+        if shared_dir:
+            self.shared_dir = shared_dir
+        if worker_id:
+            self.worker_id = worker_id
+            
+    def get_shared_dir(self) -> str | None:
+        """Get shared directory for current process."""
+        return self.shared_dir
 
     def set_current_request(self, request) -> None:
         """Set the current test request."""
         self.current_request = request
-
-    def set_shared_dir(self, shared_dir: str) -> None:
-        """Set the shared directory for IPC."""
-        self.shared_dir = shared_dir
 
     def log(self, message: str, level: LogLevel) -> None:
         """Add a log message."""
@@ -269,7 +270,14 @@ class AutodebuggerLogger:
 
     def sync_logs(self) -> None:
         """Sync logs from worker to main process."""
-        if not self.shared_dir or not self.worker_id:
+        shared_dir = self.get_shared_dir()
+        
+        # Main process doesn't need to sync - it collects from workers
+        if not self.worker_id:
+            return
+            
+        # Worker must have shared_dir
+        if not shared_dir:
             return
         
         logs = {
@@ -277,44 +285,39 @@ class AutodebuggerLogger:
             for test_id, entry in self.collector.logs.items()
         }
         
-        # Write logs to file
-        import os
-        
         # Verify both paths are strings
         if not isinstance(self.worker_id, str):
             raise ValueError("worker_id must be a string")
-        if not isinstance(self.shared_dir, str):
+        if not isinstance(shared_dir, str):
             raise ValueError("shared_dir must be a string")
             
         # Create worker directory if it doesn't exist
-        worker_dir = os.path.join(self.shared_dir, self.worker_id)
+        worker_dir = os.path.join(shared_dir, self.worker_id)
         os.makedirs(worker_dir, exist_ok=True)
         
         # Write logs to file
         log_file = os.path.join(worker_dir, 'logs.json')
         with open(log_file, 'w') as f:
             json.dump(logs, f)
-            
+        
         # Write failed tests to file
-        failed_tests_file = os.path.join(worker_dir, 'failed_tests.json')
-        with open(failed_tests_file, 'w') as f:
+        failed_file = os.path.join(worker_dir, 'failed.json')
+        with open(failed_file, 'w') as f:
             json.dump(list(self.failed_tests), f)
-
+        
     def collect_worker_logs(self) -> None:
         """Collect logs from all worker processes."""
-        if not self.shared_dir:
+        shared_dir = self.get_shared_dir()
+        if not shared_dir:
             return
         
-        import os
-        import json
-        
-        # Clear existing logs and failed tests
+        # Clear existing logs before collecting
         self.collector.clear()
         self.failed_tests.clear()
         
         # Collect logs and failed tests from each worker directory
-        for worker_dir in os.listdir(self.shared_dir):
-            worker_path = os.path.join(self.shared_dir, worker_dir)
+        for worker_dir in os.listdir(shared_dir):
+            worker_path = os.path.join(shared_dir, worker_dir)
             if not os.path.isdir(worker_path):
                 continue
                 
@@ -328,7 +331,7 @@ class AutodebuggerLogger:
                         self.collector.merge_logs(test_id, entry)
             
             # Read failed tests
-            failed_tests_file = os.path.join(worker_path, 'failed_tests.json')
+            failed_tests_file = os.path.join(worker_path, 'failed.json')
             if os.path.exists(failed_tests_file):
                 with open(failed_tests_file) as f:
                     failed_tests = json.load(f)

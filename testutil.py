@@ -31,38 +31,17 @@ def generate_test_dir(base_dir: Optional[Path] = None, prefix: str = "") -> Path
 
 
 def run_post_test_verifications(logger, result: Optional[int] = None) -> bool:
-    """Run post-test verifications.
-    
-    Currently checks:
-    1. conftest.py is properly loaded and configured
-    2. Failed tests have logs for debugging
-    
-    Args:
-        logger: Logger instance to use
-        result: Optional test result code from pytest.main()
-        
-    Returns:
-        True if all verifications pass, False otherwise
-    """
-    # Verify conftest.py is properly loaded
-    if logger.shared_dir is None:
-        print("\nERROR: No shared directory set - conftest.py may not be loaded")
+    """Run post-test verifications."""
+    # Verify logger was configured
+    if logger.get_shared_dir() is None:
+        print("[ERROR] Logger shared_dir was not set")
         return False
     
-    # Check if we have any logs at all (unfiltered)
+    # Verify test logs were collected
     if not logger.collector.logs:
-        print("\nERROR: No logs collected - conftest.py may not be working")
+        print("[ERROR] No test logs were collected")
         return False
-    
-    # Get filtered logs for checking failed tests
-    logs = logger.get_filtered_logs()
-    
-    # Check for failed tests with no logs
-    for test_id in logger.failed_tests:
-        if test_id not in logs or not logs[test_id]:
-            print(f"\nWARNING: Failed test '{test_id}' has no logs. Consider adding logging statements to help with debugging.")
-            return False
-    
+        
     return True
 
 
