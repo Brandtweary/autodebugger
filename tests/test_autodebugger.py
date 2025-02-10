@@ -130,11 +130,3 @@ def test_command_parsing(request):
             f"Case {i}: Autodebugger args mismatch.\nExpected: {case['expected']['autodebugger']}\nGot: {autodebugger_args}"
         assert pytest_args == case["expected"]["pytest"], \
             f"Case {i}: Pytest args mismatch.\nExpected: {case['expected']['pytest']}\nGot: {pytest_args}"
-
-def test_always_fails(request):
-    """Test that always fails to help debug log collection."""
-    from autodebugger.autodebugger_logger import logger
-    logger.set_current_request(request)
-    logger.debug("About to fail")
-    logger.error("This is an error message that should be collected")
-    assert False, "This test fails on purpose to debug log collection"
