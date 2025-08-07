@@ -2,9 +2,9 @@
 name = "autodebugger"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Brandt Weary"]
 description = "A code editor designed for use by LLM agents"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 
 [[bin]]
 name = "autodebugger"
