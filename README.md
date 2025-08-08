@@ -1,8 +1,19 @@
 # Autodebugger
 
-An integrated code editor and development tool designed for use by LLM agents. This Rust crate provides programmatic code manipulation features that enable LLMs to debug and modify code more effectively than traditional approaches.
+Developer utilities designed to enhance LLM-assisted coding workflows. Autodebugger provides essential tools that help language models work more effectively with real-world codebases, addressing common pain points like excessive logging and complex command orchestration.
 
 ## Installation
+
+### Configuration Setup
+
+Before using autodebugger, set up your configuration:
+
+```bash
+# Copy the example configuration
+cp config.example.yaml config.yaml
+
+# Edit config.yaml to customize thresholds (optional)
+```
 
 ### As a Git Submodule
 
@@ -57,11 +68,63 @@ println!("Output: {}", result.stdout);
 
 ## Features
 
-- Simple command execution with structured results
+### Log Verbosity Detection
+Automatically detect when your application is generating excessive logs. The `VerbosityCheckLayer` integrates seamlessly with the `tracing` ecosystem to monitor log output and warn when thresholds are exceeded.
+
+### Command Execution
+- Structured command execution with clean result types
 - Working directory management
-- Sequential command execution with early exit on failure
+- Sequential command chains with early exit on failure
 - Input piping support
-- Async command execution support
+- Async command execution
+
+### Log Verbosity Checker Usage
+
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+autodebugger = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["registry"] }
+```
+
+Integrate with your existing tracing setup:
+```rust
+use autodebugger::VerbosityCheckLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+fn main() {
+    // Create the verbosity checking layer
+    let verbosity_layer = VerbosityCheckLayer::new();
+    
+    // Add it to your tracing subscriber
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(verbosity_layer.clone())
+        .init();
+    
+    // Your application code here...
+    
+    // Check verbosity at shutdown
+    if let Some(report) = verbosity_layer.check_and_report() {
+        tracing::warn!("{}", report);
+    }
+}
+```
+
+The checker automatically detects your configured log level and applies thresholds from your config.yaml. Default thresholds:
+- `INFO`: 50 total logs
+- `DEBUG`: 100 total logs  
+- `TRACE`: 200 total logs
+
+You can customize these thresholds by editing config.yaml:
+```yaml
+verbosity:
+  info_threshold: 75    # Allow more logs in production
+  debug_threshold: 150  # Adjust for your debugging needs
+```
+
+When exceeded, you'll get a clear breakdown showing which log levels are contributing to the verbosity.
 
 ## Examples
 

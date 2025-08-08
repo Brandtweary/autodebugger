@@ -5,7 +5,12 @@ use std::path::PathBuf;
 use tracing::{debug, error, info, trace};
 
 pub mod monitor;
-pub mod ci;
+pub mod log_checker;
+pub mod config;
+
+// Re-export the main types for easy access
+pub use log_checker::VerbosityCheckLayer;
+pub use config::Config;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandResult {
