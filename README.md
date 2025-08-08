@@ -46,14 +46,43 @@ cargo install --path .
 
 After installation, the `autodebugger` command will be available in your terminal.
 
-## CLI Usage
+## CLI Commands
+
+### remove-debug
+Remove all `debug!` macro calls from Rust source files. Follows the convention that debug! calls are temporary and should be removed before committing.
+
+```bash
+# Remove debug! calls from default paths (configured in config.yaml)
+autodebugger remove-debug
+
+# Remove from multiple paths
+autodebugger remove-debug src/ tests/ examples/
+
+# Remove from specific file or directory
+autodebugger remove-debug src/main.rs
+autodebugger remove-debug /path/to/project
+
+# Preview what would be removed without making changes
+autodebugger remove-debug --dry-run
+
+# Verbose mode shows which files are processed and warnings
+autodebugger remove-debug --verbose
+```
+
+The command conservatively removes only standalone `debug!` calls on their own lines. It skips:
+- Multiline debug! macros
+- debug! calls mixed with other code on the same line
+- debug! in comments (might be examples or documentation)
+- debug! in match arms or lambdas
+
+### Legacy Command Execution
 
 ```bash
 # Run any shell command through autodebugger
-autodebugger ls
-autodebugger pwd
-autodebugger echo "Hello, World!"
-autodebugger cargo build
+autodebugger run ls
+autodebugger run pwd
+autodebugger run "echo 'Hello, World!'"
+autodebugger run "cargo build"
 ```
 
 ## Library Usage

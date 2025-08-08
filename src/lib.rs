@@ -2,11 +2,12 @@ use anyhow::{Context, Result};
 use cmd_lib::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use tracing::{debug, error, info, trace};
+use tracing::{error, info, trace};
 
 pub mod monitor;
 pub mod log_checker;
 pub mod config;
+pub mod remove_debug;
 
 // Re-export the main types for easy access
 pub use log_checker::VerbosityCheckLayer;
@@ -46,7 +47,6 @@ impl Autodebugger {
 
     pub fn run_command(&self, command: &str) -> Result<CommandResult> {
         info!("Running command: {}", command);
-        debug!("Working directory: {}", self.working_dir.display());
 
         std::env::set_current_dir(&self.working_dir)
             .context("Failed to set working directory")?;
@@ -77,8 +77,6 @@ impl Autodebugger {
 
     pub fn run_command_with_input(&self, command: &str, input: &str) -> Result<CommandResult> {
         info!("Running command with input: {}", command);
-        debug!("Input: {}", input);
-        debug!("Working directory: {}", self.working_dir.display());
 
         std::env::set_current_dir(&self.working_dir)
             .context("Failed to set working directory")?;

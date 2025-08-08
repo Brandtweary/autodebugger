@@ -82,24 +82,29 @@ impl VerbosityCheckLayer {
     
     /// Check if verbosity exceeds recommended thresholds
     pub fn check_verbosity(&self) -> Option<VerbosityWarning> {
-        let total = self.total_count();
+        // Only check thresholds for INFO, DEBUG, and TRACE levels
+        // WARN and ERROR levels should never trigger verbosity warnings
         let threshold = match self.configured_level {
-            Level::TRACE => self.config.verbosity.trace_threshold,
-            Level::DEBUG => self.config.verbosity.debug_threshold,
-            Level::INFO => self.config.verbosity.info_threshold,
-            Level::WARN => self.config.verbosity.warn_threshold,
-            Level::ERROR => self.config.verbosity.error_threshold,
+            Level::TRACE => Some(self.config.verbosity.trace_threshold),
+            Level::DEBUG => Some(self.config.verbosity.debug_threshold),
+            Level::INFO => Some(self.config.verbosity.info_threshold),
+            Level::WARN | Level::ERROR => None, // No threshold for WARN/ERROR
         };
         
-        if total > threshold {
-            Some(VerbosityWarning {
-                total_count: total,
-                threshold,
-                configured_level: self.configured_level,
-                counts: self.counts_by_level(),
-            })
+        if let Some(threshold_value) = threshold {
+            let total = self.total_count();
+            if total > threshold_value {
+                Some(VerbosityWarning {
+                    total_count: total,
+                    threshold: threshold_value,
+                    configured_level: self.configured_level,
+                    counts: self.counts_by_level(),
+                })
+            } else {
+                None
+            }
         } else {
-            None
+            None // No verbosity check for WARN/ERROR levels
         }
     }
     

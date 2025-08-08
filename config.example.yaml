@@ -1,12 +1,17 @@
 # Autodebugger Configuration
 # Copy this file to config.yaml and customize as needed
 
-# Log verbosity thresholds
-# These control when warnings are generated for excessive logging
+# Log verbosity thresholds (only applies to INFO, DEBUG, TRACE levels)
+# WARN and ERROR levels never trigger verbosity warnings - there's no such thing as "too many" errors/warnings!
 verbosity:
   # Maximum logs allowed at each level before warning
   info_threshold: 50      # INFO level: general application flow
   debug_threshold: 100    # DEBUG level: detailed debugging info
   trace_threshold: 200    # TRACE level: very detailed trace logging
-  warn_threshold: 25      # WARN level: warning messages
-  error_threshold: 10     # ERROR level: error messages
+
+# Remove-debug command configuration
+remove_debug:
+  # Default paths to search when no paths are specified
+  default_paths:
+    - src
+    - tests

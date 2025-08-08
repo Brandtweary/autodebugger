@@ -21,5 +21,7 @@ tracing-subscriber = { version = "0.3", features = ["registry", "fmt", "env-filt
 tokio = { version = "1", features = ["full"] }
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.0", features = ["derive"] }
+regex = "1.10"
+walkdir = "2.4"
 
 [dev-dependencies]

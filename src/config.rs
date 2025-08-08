@@ -8,6 +8,17 @@ use anyhow::{Context, Result};
 pub struct Config {
     #[serde(default)]
     pub verbosity: VerbosityConfig,
+    
+    #[serde(default)]
+    pub remove_debug: RemoveDebugConfig,
+}
+
+/// Configuration for remove-debug command
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RemoveDebugConfig {
+    /// Default paths to search when no path is specified
+    #[serde(default = "default_remove_debug_paths")]
+    pub default_paths: Vec<String>,
 }
 
 /// Log verbosity threshold configuration
@@ -24,20 +35,21 @@ pub struct VerbosityConfig {
     /// Threshold for TRACE level logging
     #[serde(default = "default_trace_threshold")]
     pub trace_threshold: usize,
-    
-    /// Threshold for WARN level logging
-    #[serde(default = "default_warn_threshold")]
-    pub warn_threshold: usize,
-    
-    /// Threshold for ERROR level logging
-    #[serde(default = "default_error_threshold")]
-    pub error_threshold: usize,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             verbosity: VerbosityConfig::default(),
+            remove_debug: RemoveDebugConfig::default(),
+        }
+    }
+}
+
+impl Default for RemoveDebugConfig {
+    fn default() -> Self {
+        Self {
+            default_paths: default_remove_debug_paths(),
         }
     }
 }
@@ -48,8 +60,6 @@ impl Default for VerbosityConfig {
             info_threshold: default_info_threshold(),
             debug_threshold: default_debug_threshold(),
             trace_threshold: default_trace_threshold(),
-            warn_threshold: default_warn_threshold(),
-            error_threshold: default_error_threshold(),
         }
     }
 }
@@ -58,8 +68,9 @@ impl Default for VerbosityConfig {
 fn default_info_threshold() -> usize { 50 }
 fn default_debug_threshold() -> usize { 100 }
 fn default_trace_threshold() -> usize { 200 }
-fn default_warn_threshold() -> usize { 25 }
-fn default_error_threshold() -> usize { 10 }
+fn default_remove_debug_paths() -> Vec<String> { 
+    vec!["src".to_string(), "tests".to_string()] 
+}
 
 impl Config {
     /// Load configuration from file, or use defaults if not found
