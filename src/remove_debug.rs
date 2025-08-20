@@ -98,12 +98,13 @@ impl DebugRemover {
         let mut report = FileReport::default();
         
         // Regex for simple, standalone debug! calls
-        // Matches lines that contain only whitespace, debug!, and its arguments
+        // Matches lines that contain only whitespace, debug! (with optional tracing:: prefix), and its arguments
         // Allows trailing comments after the semicolon
-        let simple_debug_re = Regex::new(r"^\s*debug!\s*\([^;]*\)\s*;\s*(?://.*)?$").unwrap();
+        let simple_debug_re = Regex::new(r"^\s*(?:tracing::)?debug!\s*\([^;]*\)\s*;\s*(?://.*)?$").unwrap();
         
         // Regex to detect debug! anywhere in a line (for warning purposes)
-        let any_debug_re = Regex::new(r"debug!\s*\(").unwrap();
+        // Also matches tracing::debug!
+        let any_debug_re = Regex::new(r"(?:tracing::)?debug!\s*\(").unwrap();
         
         // Track if we're in a multiline comment
         let mut in_block_comment = false;
@@ -128,7 +129,7 @@ impl DebugRemover {
                 if in_block_comment || line.trim_start().starts_with("//") {
                     report.warnings.push(Warning {
                         line_number,
-                        message: "debug! found in comment - skipping".to_string(),
+                        message: "debug! or tracing::debug! found in comment - skipping".to_string(),
                     });
                     new_lines.push(line.to_string());
                 }
@@ -136,7 +137,7 @@ impl DebugRemover {
                 else if !simple_debug_re.is_match(line) {
                     report.warnings.push(Warning {
                         line_number,
-                        message: "debug! found with other code on same line - skipping".to_string(),
+                        message: "debug! or tracing::debug! found with other code on same line - skipping".to_string(),
                     });
                     new_lines.push(line.to_string());
                 }
