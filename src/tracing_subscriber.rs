@@ -253,6 +253,12 @@ pub fn create_base_env_filter(default_level: &str) -> EnvFilter {
         // Suppress sled's verbose debug output
         .add_directive("sled=warn".parse().unwrap())
         .add_directive("pagecache=warn".parse().unwrap())
+        // Reduce HTTP client verbosity (only show warnings and errors)
+        .add_directive("hyper=warn".parse().unwrap())
+        .add_directive("reqwest=warn".parse().unwrap())
+        // Reduce WebSocket library verbosity (only show warnings and errors)
+        .add_directive("tungstenite=warn".parse().unwrap())
+        .add_directive("tokio_tungstenite=warn".parse().unwrap())
 }
 
 /// Initialize the tracing subscriber with custom formatting and verbosity checking
