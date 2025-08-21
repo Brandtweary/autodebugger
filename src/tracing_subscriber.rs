@@ -1,8 +1,73 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tracing::{Event, Level, Subscriber};
-use tracing_subscriber::layer::{Context, Layer};
+use tracing_subscriber::fmt::format::Writer;
+use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
+use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
+use tracing_subscriber::registry::LookupSpan;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use crate::config::Config;
+
+/// Custom formatter that conditionally shows file:line only for ERROR and WARN levels
+/// and omits the INFO prefix for cleaner default-level output
+pub struct ConditionalLocationFormatter;
+
+impl<S, N> FormatEvent<S, N> for ConditionalLocationFormatter
+where
+    S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
+    fn format_event(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        mut writer: Writer<'_>,
+        event: &tracing::Event<'_>,
+    ) -> std::fmt::Result {
+        let metadata = event.metadata();
+        let level = metadata.level();
+        
+        // Format level (skip INFO prefix for cleaner output)
+        if !matches!(level, &Level::INFO) {
+            write!(&mut writer, "{}", level)?;
+            
+            // Only show module target and file:line for ERROR and WARN levels
+            if matches!(level, &Level::ERROR | &Level::WARN) {
+                write!(&mut writer, " {}", metadata.target())?;
+                if let (Some(file), Some(line)) = (metadata.file(), metadata.line()) {
+                    write!(&mut writer, " {}:{}", file, line)?;
+                }
+            }
+            
+            write!(&mut writer, ": ")?;
+        }
+        
+        // Format all the spans in the event's span context
+        if let Some(scope) = ctx.event_scope() {
+            let mut first = true;
+            for span in scope.from_root() {
+                if !first {
+                    write!(&mut writer, ":")?;
+                }
+                first = false;
+                write!(writer, "{}", span.name())?;
+                
+                let ext = span.extensions();
+                if let Some(fields) = ext.get::<tracing_subscriber::fmt::FormattedFields<N>>() {
+                    if !fields.is_empty() {
+                        write!(writer, "{{{}}}", fields)?;
+                    }
+                }
+            }
+            write!(writer, " ")?;
+        }
+        
+        // Write the event fields
+        ctx.field_format().format_fields(writer.by_ref(), event)?;
+        
+        writeln!(writer)
+    }
+}
 
 /// A tracing Layer that counts log events by level to detect excessive verbosity
 #[derive(Debug, Clone)]
@@ -181,11 +246,39 @@ pub struct VerbosityWarning {
     pub counts: LogCounts,
 }
 
+/// Create a base env filter with sled/pagecache suppression
+pub fn create_base_env_filter(default_level: &str) -> EnvFilter {
+    EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(default_level))
+        // Suppress sled's verbose debug output
+        .add_directive("sled=warn".parse().unwrap())
+        .add_directive("pagecache=warn".parse().unwrap())
+}
+
+/// Initialize the tracing subscriber with custom formatting and verbosity checking
+/// Returns a handle to the VerbosityCheckLayer for later checking
+/// 
+/// # Arguments
+/// * `default_level` - Optional default log level (e.g., "info", "warn"). If None, defaults to "info"
+pub fn init_logging(default_level: Option<&str>) -> VerbosityCheckLayer {
+    let default = default_level.unwrap_or("info");
+    let env_filter = create_base_env_filter(default);
+    let verbosity_layer = VerbosityCheckLayer::new();
+    let verbosity_clone = verbosity_layer.clone();
+    
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_subscriber::fmt::layer()
+            .event_format(ConditionalLocationFormatter))
+        .with(verbosity_layer)
+        .init();
+    
+    verbosity_clone
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tracing_subscriber::layer::SubscriberExt;
-    use tracing_subscriber::util::SubscriberInitExt;
     
     #[test]
     fn test_verbosity_check_layer() {

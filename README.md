@@ -97,6 +97,33 @@ println!("Output: {}", result.stdout);
 
 ## Features
 
+### Complete Tracing Subscriber
+A production-ready tracing subscriber optimized for LLM-assisted development. The `init_logging()` function provides a complete setup with sensible defaults:
+
+```rust
+use autodebugger::init_logging;
+
+fn main() {
+    // Initialize with all features enabled
+    let verbosity_layer = init_logging(None);  // Uses "info" as default
+    
+    // Your application code here...
+    
+    // Check for excessive verbosity at shutdown
+    if let Some(report) = verbosity_layer.check_and_report() {
+        tracing::warn!("{}", report);
+    }
+}
+```
+
+**Key features of the tracing subscriber:**
+- **Clean console output**: No timestamps or ANSI codes cluttering terminal output
+- **Smart level prefixes**: INFO prefix is hidden for cleaner default output, while DEBUG/WARN/ERROR are shown
+- **Conditional location info**: File:line information only shown for ERROR and WARN levels where it's most useful
+- **Sled/pagecache filtering**: Automatically suppresses verbose output from sled database (common in Rust apps)
+- **Verbosity monitoring**: Built-in detection of excessive logging with configurable thresholds
+- **Environment-aware**: Respects RUST_LOG environment variable settings
+
 ### Log Verbosity Detection
 Automatically detect when your application is generating excessive logs. The `VerbosityCheckLayer` integrates seamlessly with the `tracing` ecosystem to monitor log output and warn when thresholds are exceeded.
 
@@ -107,28 +134,33 @@ Automatically detect when your application is generating excessive logs. The `Ve
 - Input piping support
 - Async command execution
 
-### Log Verbosity Checker Usage
+### Custom Tracing Components
+
+If you need more control, you can use the individual components:
 
 Add to your `Cargo.toml`:
 ```toml
 [dependencies]
 autodebugger = "0.1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["registry"] }
+tracing-subscriber = { version = "0.3", features = ["registry", "fmt", "env-filter"] }
 ```
 
-Integrate with your existing tracing setup:
+Build your own custom tracing setup:
 ```rust
-use autodebugger::VerbosityCheckLayer;
+use autodebugger::{VerbosityCheckLayer, ConditionalLocationFormatter, create_base_env_filter};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 fn main() {
-    // Create the verbosity checking layer
+    // Create individual components
+    let env_filter = create_base_env_filter("info");  // With sled suppression
     let verbosity_layer = VerbosityCheckLayer::new();
     
-    // Add it to your tracing subscriber
+    // Build custom subscriber
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
+        .with(env_filter)
+        .with(tracing_subscriber::fmt::layer()
+            .event_format(ConditionalLocationFormatter))  // Clean formatting
         .with(verbosity_layer.clone())
         .init();
     

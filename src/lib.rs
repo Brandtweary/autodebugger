@@ -5,12 +5,17 @@ use std::path::PathBuf;
 use tracing::{error, info, trace};
 
 pub mod monitor;
-pub mod log_checker;
+pub mod tracing_subscriber;
 pub mod config;
 pub mod remove_debug;
 
 // Re-export the main types for easy access
-pub use log_checker::VerbosityCheckLayer;
+pub use tracing_subscriber::{
+    VerbosityCheckLayer,
+    ConditionalLocationFormatter,
+    init_logging,
+    create_base_env_filter,
+};
 pub use config::Config;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
