@@ -1,3 +1,65 @@
+//! Autodebugger CLI - A cybernetic coding dashboard for monitoring LLM agents
+//!
+//! This is the main entry point for the Autodebugger command-line interface.
+//! Autodebugger provides a suite of tools for managing and monitoring code development
+//! workflows, particularly focused on supporting LLM-assisted development.
+//!
+//! ## Features
+//!
+//! - **Worktree Monitoring**: Track changes across multiple git worktrees
+//! - **Diff Analysis**: Compare changes across different development branches
+//! - **Context Aggregation**: Gather development context for LLM agents
+//! - **Debug Code Removal**: Automatically remove debug statements from production code
+//! - **Documentation Validation**: Ensure code modules have appropriate documentation
+//! - **Rotating File Logging**: Automatic log rotation with configurable retention
+//!
+//! ## Commands
+//!
+//! ### `monitor` - Monitor worktrees for changes
+//! Track and report on changes across multiple git worktrees in a workspace.
+//!
+//! ### `diff` - Show diffs across worktrees
+//! Display differences between worktrees with optional filtering and summary modes.
+//!
+//! ### `context` - Get aggregated context
+//! Gather development context information for use by LLM agents.
+//!
+//! ### `status` - Show status of all worktrees
+//! Display the current status of all worktrees in the workspace.
+//!
+//! ### `remove-debug` - Remove debug! macro calls
+//! Automatically remove all debug! macro invocations from Rust source files.
+//!
+//! ### `validate-docs` - Validate module documentation
+//! Check that Rust modules have appropriate documentation based on their complexity.
+//!
+//! ## Configuration
+//!
+//! Autodebugger can be configured via a `config.yaml` file in the current directory.
+//! See `config.example.yaml` for available configuration options.
+//!
+//! ## Logging
+//!
+//! All commands support automatic file logging with rotation. Logs are stored in
+//! the `autodebugger_logs/` directory with automatic rotation based on file size.
+//!
+//! ## Environment Variables
+//!
+//! - `RUST_LOG`: Control logging verbosity (e.g., `info`, `debug`, `trace`)
+//!
+//! ## Examples
+//!
+//! ```bash
+//! # Monitor worktrees in the current directory
+//! autodebugger monitor .
+//!
+//! # Remove debug statements from source code
+//! autodebugger remove-debug src/
+//!
+//! # Validate documentation with verbose output
+//! autodebugger validate-docs --verbose
+//! ```
+
 use anyhow::Result;
 use autodebugger::{
     Autodebugger, 
@@ -83,6 +145,20 @@ enum Commands {
         /// Show verbose output
         #[arg(short, long)]
         verbose: bool,
+    },
+    
+    /// Validate module documentation in Rust source files
+    ValidateDocs {
+        /// Paths to files or directories (uses config defaults if none specified)
+        paths: Vec<PathBuf>,
+        
+        /// Show verbose output
+        #[arg(short, long)]
+        verbose: bool,
+        
+        /// Treat warnings as errors (exit with non-zero code)
+        #[arg(short, long)]
+        strict: bool,
     },
 }
 
@@ -224,6 +300,47 @@ async fn main() -> Result<()> {
             
             if dry_run && total_report.total_lines_removed > 0 {
                 info!("Re-run without --dry-run to apply changes");
+            }
+        }
+        
+        Some(Commands::ValidateDocs { paths, verbose, strict }) => {
+            use autodebugger::config::Config;
+            use autodebugger::validate_docs::DocValidator;
+            
+            // Load configuration
+            let config = Config::load().unwrap_or_default();
+            
+            // Use provided paths or fall back to config defaults
+            let paths_to_process = if paths.is_empty() {
+                config.validate_docs.default_paths.into_iter()
+                    .map(PathBuf::from)
+                    .collect()
+            } else {
+                paths
+            };
+            
+            if verbose {
+                info!("Validating documentation in specified paths");
+            }
+            
+            // Create validator with config settings
+            let validator = DocValidator::new()
+                .with_min_doc_lines(config.validate_docs.min_doc_lines_complex)
+                .with_max_doc_lines(config.validate_docs.max_doc_lines)
+                .with_complexity_threshold(config.validate_docs.complexity_threshold)
+                .with_ignore_patterns(config.validate_docs.ignore_patterns)?
+                .with_verbose(verbose)
+                .with_strict(strict);
+            
+            // Run validation
+            let report = validator.validate_paths(paths_to_process)?;
+            
+            // Print summary
+            report.print_summary(verbose);
+            
+            // Exit with error code if strict mode and there were warnings
+            if !report.passed(strict) {
+                std::process::exit(1);
             }
         }
         

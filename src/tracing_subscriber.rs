@@ -1,3 +1,66 @@
+//! Advanced tracing subscriber with conditional verbosity and file logging
+//!
+//! This module provides a sophisticated tracing subscriber implementation that extends
+//! the standard tracing-subscriber with dynamic verbosity control and rotating file
+//! logging capabilities. It's designed to provide granular control over logging output
+//! based on the frequency of similar messages.
+//!
+//! ## Key Features
+//!
+//! ### Verbosity-Based Filtering
+//! The `VerbosityCheckLayer` implements intelligent log filtering based on message frequency:
+//! - First N occurrences of a message type are logged at INFO level
+//! - Next M occurrences are logged at DEBUG level
+//! - Remaining occurrences are logged at TRACE level
+//! - Configurable thresholds via `VerbosityConfig`
+//!
+//! ### Conditional Location Formatting
+//! The `ConditionalLocationFormatter` adds source location information (file:line) to
+//! log messages, but only when the verbosity threshold is exceeded. This helps identify
+//! the source of frequent log messages without cluttering initial output.
+//!
+//! ### Rotating File Logging
+//! Integration with the `rotating_file_logger` module provides:
+//! - Automatic log file rotation based on size
+//! - Timestamped log file creation
+//! - Configurable retention policies
+//! - Concurrent console and file output
+//!
+//! ### External Crate Filtering
+//! Automatically suppresses debug-level logs from external crates to reduce noise,
+//! while preserving info-level and above messages from all sources.
+//!
+//! ## Architecture
+//!
+//! The module uses tracing-subscriber's layered architecture:
+//! 1. **Base Layer**: EnvFilter for RUST_LOG environment variable support
+//! 2. **Verbosity Layer**: Custom layer for frequency-based filtering
+//! 3. **Format Layer**: Customizable output formatting with conditional locations
+//! 4. **Writer Layer**: Multiplexed output to console and rotating files
+//!
+//! ## Usage
+//!
+//! ```rust
+//! use autodebugger::tracing_subscriber::{init_logging_with_file, RotatingFileConfig};
+//!
+//! let config = RotatingFileConfig {
+//!     log_directory: "logs".into(),
+//!     filename: "app.log".to_string(),
+//!     max_files: 10,
+//!     max_size_mb: 5,
+//!     console_output: true,
+//! };
+//!
+//! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config));
+//! ```
+//!
+//! ## Configuration
+//!
+//! Verbosity thresholds can be configured via `config.yaml`:
+//! - `verbosity.info_threshold`: Number of messages before switching to DEBUG
+//! - `verbosity.debug_threshold`: Number of messages before switching to TRACE
+//! - `verbosity.trace_threshold`: Maximum messages to log at TRACE level
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tracing::{Event, Level, Subscriber};

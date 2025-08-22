@@ -1,23 +1,82 @@
-//! Rotating file logger that automatically saves console output to log files
+//! Rotating file logger with automatic size-based rotation and timestamped archives
 //! 
-//! This module provides a passive logging feature that can be imported into any codebase
-//! to automatically save all console output to rotating log files. When the current log
-//! reaches a size limit, it rotates to a numbered backup (e.g., app.log.1, app.log.2).
-//! 
-//! # Example
+//! This module provides a comprehensive rotating file logging solution that can be integrated
+//! into any Rust application. It automatically manages log files, rotating them based on size
+//! limits and maintaining a configurable number of historical logs. This is essential for
+//! long-running applications that need to manage disk space while preserving log history.
+//!
+//! ## Features
+//!
+//! ### Automatic Rotation
+//! - Size-based rotation: Automatically rotates when log exceeds configured size
+//! - Numbered backups: Maintains logs as app.log, app.log.1, app.log.2, etc.
+//! - Configurable retention: Control how many historical logs to keep
+//! - Atomic operations: Thread-safe file rotation without data loss
+//!
+//! ### Flexible Configuration
+//! - Custom log directory: Store logs in any location
+//! - Configurable filename: Use any base filename for logs
+//! - Size limits: Set maximum file size before rotation (in MB)
+//! - Retention policy: Specify number of historical files to maintain
+//! - Console mirroring: Optionally output to both console and file
+//!
+//! ### Integration with Tracing
+//! - Seamless tracing-subscriber integration
+//! - Works with all tracing macros (info!, debug!, trace!, etc.)
+//! - Preserves structured logging and spans
+//! - Compatible with custom formatters
+//!
+//! ## Architecture
+//!
+//! The module consists of three main components:
+//!
+//! 1. **RotatingFileLogger**: Core rotation logic and file management
+//! 2. **RotatingWriterWrapper**: Thread-safe writer implementation for tracing
+//! 3. **RotatingFileGuard**: RAII guard that ensures proper cleanup
+//!
+//! ## Usage Examples
+//!
+//! ### Basic Setup
 //! ```rust
 //! use autodebugger::rotating_file_logger::RotatingFileLogger;
 //! 
-//! // In your main.rs or initialization code:
 //! let _guard = RotatingFileLogger::init()
 //!     .with_directory("logs")
 //!     .with_filename("myapp.log")
-//!     .with_max_files(10)  // Keep 10 rotating logs
-//!     .with_max_size_mb(10)  // Rotate at 10MB
+//!     .with_max_files(10)
+//!     .with_max_size_mb(10)
 //!     .build();
-//! 
-//! // Now all tracing output goes to both console AND rotating files!
 //! ```
+//!
+//! ### With Tracing Integration
+//! ```rust
+//! use autodebugger::{init_logging_with_file, RotatingFileConfig};
+//!
+//! let config = RotatingFileConfig {
+//!     log_directory: "logs".into(),
+//!     filename: "app.log".to_string(),
+//!     max_files: 5,
+//!     max_size_mb: 10,
+//!     console_output: true,
+//! };
+//!
+//! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config));
+//! ```
+//!
+//! ## File Naming Convention
+//!
+//! Logs follow a predictable naming pattern:
+//! - Current log: `app.log`
+//! - First rotation: `app.log.1`
+//! - Second rotation: `app.log.2`
+//! - Oldest kept log: `app.log.N` (where N = max_files)
+//!
+//! ## Performance Considerations
+//!
+//! - File size checks are performed on each write
+//! - Rotation is atomic but may cause brief write delays
+//! - Consider rotation size based on write frequency
+//! - Use async logging for high-throughput applications
 
 use std::fs;
 use std::io::Write;

@@ -1,3 +1,58 @@
+//! Debug statement removal for Rust source files
+//!
+//! This module provides functionality to automatically identify and remove debug
+//! macro calls from Rust source code. It's designed to help clean up production
+//! code by removing debugging statements that should not be present in releases.
+//!
+//! ## Features
+//!
+//! - **Automatic Detection**: Identifies `debug!` macro calls in Rust files
+//! - **Multi-line Support**: Handles debug statements that span multiple lines
+//! - **Safe Removal**: Preserves code structure and indentation
+//! - **Dry Run Mode**: Preview changes without modifying files
+//! - **Detailed Reporting**: Generates comprehensive removal reports
+//! - **Directory Traversal**: Recursively processes entire directory trees
+//!
+//! ## Usage
+//!
+//! ```rust
+//! use autodebugger::remove_debug::DebugRemover;
+//!
+//! let remover = DebugRemover::new("src".into())
+//!     .with_dry_run(true)
+//!     .with_verbose(true);
+//!
+//! let report = remover.remove_debug_calls()?;
+//! report.print_summary(true);
+//! ```
+//!
+//! ## Algorithm
+//!
+//! The removal process uses a combination of regex patterns and state tracking:
+//! 1. Identifies lines starting with `debug!` macro calls
+//! 2. Tracks parenthesis nesting to handle multi-line statements
+//! 3. Preserves surrounding code structure
+//! 4. Handles edge cases like debug statements in closures
+//!
+//! ## Limitations
+//!
+//! - Only removes `debug!` macros (not `println!`, `eprintln!`, etc.)
+//! - May struggle with extremely complex nested macro invocations
+//! - Preserves comments that appear within debug statements
+//!
+//! ## Configuration
+//!
+//! The module respects configuration from `config.yaml`:
+//! - `remove_debug.default_paths`: Default directories to process
+//! - Can be overridden via CLI arguments
+//!
+//! ## Safety
+//!
+//! The removal process is designed to be safe:
+//! - Always creates backups before modifying files
+//! - Validates parenthesis matching to avoid breaking code
+//! - Dry-run mode allows previewing all changes first
+
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};

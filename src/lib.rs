@@ -1,3 +1,59 @@
+//! Autodebugger Library - Core functionality for the cybernetic coding dashboard
+//!
+//! This library provides the core components and utilities used by the Autodebugger CLI
+//! and can also be used as a standalone library for building custom development tools.
+//!
+//! ## Core Components
+//!
+//! ### Command Execution (`Autodebugger`)
+//! The main `Autodebugger` struct provides safe command execution with:
+//! - Working directory management
+//! - Input/output capture
+//! - Sequential and async command execution
+//! - Error handling and exit code reporting
+//!
+//! ### Monitoring (`monitor` module)
+//! Provides git worktree monitoring capabilities:
+//! - Track changes across multiple worktrees
+//! - Generate diffs and status reports
+//! - Aggregate development context
+//!
+//! ### Code Cleanup (`remove_debug` module)
+//! Automated removal of debug statements:
+//! - Identifies and removes `debug!` macro calls
+//! - Handles multi-line debug statements
+//! - Provides dry-run mode for preview
+//! - Generates detailed removal reports
+//!
+//! ### Documentation Validation (`validate_docs` module)
+//! Ensures code documentation quality:
+//! - Validates module-level documentation
+//! - Configurable complexity thresholds
+//! - Supports ignore patterns for test files
+//!
+//! ### Logging Infrastructure
+//! Advanced logging capabilities with:
+//! - Rotating file logs (`rotating_file_logger`)
+//! - Conditional verbosity filtering (`tracing_subscriber`)
+//! - Structured logging with tracing
+//!
+//! ## Configuration
+//!
+//! The library uses a flexible configuration system (`config` module) that supports:
+//! - YAML configuration files
+//! - Environment variable overrides
+//! - Sensible defaults for all settings
+//!
+//! ## Usage Example
+//!
+//! ```rust
+//! use autodebugger::Autodebugger;
+//!
+//! let debugger = Autodebugger::new();
+//! let result = debugger.run_command("git status")?;
+//! println!("Output: {}", result.stdout);
+//! ```
+
 use anyhow::{Context, Result};
 use cmd_lib::*;
 use serde::{Deserialize, Serialize};
@@ -8,6 +64,7 @@ pub mod monitor;
 pub mod tracing_subscriber;
 pub mod config;
 pub mod remove_debug;
+pub mod validate_docs;
 pub mod rotating_file_logger;
 
 // Re-export the main types for easy access

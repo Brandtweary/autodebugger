@@ -12,6 +12,9 @@ pub struct Config {
     #[serde(default)]
     pub remove_debug: RemoveDebugConfig,
     
+    #[serde(default)]
+    pub validate_docs: ValidateDocsConfig,
+    
     /// Number of rotating log files to keep (default: 10)
     #[serde(default = "default_log_rotation_count")]
     pub log_rotation_count: usize,
@@ -23,6 +26,30 @@ pub struct RemoveDebugConfig {
     /// Default paths to search when no path is specified
     #[serde(default = "default_remove_debug_paths")]
     pub default_paths: Vec<String>,
+}
+
+/// Configuration for validate-docs command
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ValidateDocsConfig {
+    /// Default paths to validate when no path is specified
+    #[serde(default = "default_validate_docs_paths")]
+    pub default_paths: Vec<String>,
+    
+    /// Minimum documentation lines for complex modules
+    #[serde(default = "default_min_doc_lines_complex")]
+    pub min_doc_lines_complex: usize,
+    
+    /// Maximum documentation lines for any module
+    #[serde(default = "default_max_doc_lines")]
+    pub max_doc_lines: usize,
+    
+    /// Line count threshold to consider a module "complex"
+    #[serde(default = "default_complexity_threshold")]
+    pub complexity_threshold: usize,
+    
+    /// Glob patterns to ignore (e.g., "**/tests/**")
+    #[serde(default = "default_ignore_patterns")]
+    pub ignore_patterns: Vec<String>,
 }
 
 /// Log verbosity threshold configuration
@@ -46,6 +73,7 @@ impl Default for Config {
         Self {
             verbosity: VerbosityConfig::default(),
             remove_debug: RemoveDebugConfig::default(),
+            validate_docs: ValidateDocsConfig::default(),
             log_rotation_count: default_log_rotation_count(),
         }
     }
@@ -55,6 +83,18 @@ impl Default for RemoveDebugConfig {
     fn default() -> Self {
         Self {
             default_paths: default_remove_debug_paths(),
+        }
+    }
+}
+
+impl Default for ValidateDocsConfig {
+    fn default() -> Self {
+        Self {
+            default_paths: default_validate_docs_paths(),
+            min_doc_lines_complex: default_min_doc_lines_complex(),
+            max_doc_lines: default_max_doc_lines(),
+            complexity_threshold: default_complexity_threshold(),
+            ignore_patterns: default_ignore_patterns(),
         }
     }
 }
@@ -75,6 +115,15 @@ fn default_debug_threshold() -> usize { 100 }
 fn default_trace_threshold() -> usize { 200 }
 fn default_remove_debug_paths() -> Vec<String> { 
     vec!["src".to_string(), "tests".to_string()] 
+}
+fn default_validate_docs_paths() -> Vec<String> { 
+    vec!["src".to_string()] 
+}
+fn default_min_doc_lines_complex() -> usize { 50 }
+fn default_max_doc_lines() -> usize { 200 }
+fn default_complexity_threshold() -> usize { 200 }
+fn default_ignore_patterns() -> Vec<String> {
+    vec!["**/tests/**".to_string(), "**/examples/**".to_string()]
 }
 fn default_log_rotation_count() -> usize { 10 }
 

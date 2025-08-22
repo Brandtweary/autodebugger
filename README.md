@@ -48,6 +48,35 @@ After installation, the `autodebugger` command will be available in your termina
 
 ## CLI Commands
 
+### validate-docs
+Validate that Rust modules have appropriate documentation. The command checks module-level documentation (lines starting with `//!`) and enforces configurable thresholds based on module complexity.
+
+**Note:** This command only recognizes the standard Rust `//!` documentation format. If your codebase uses other formats like `/** */` for module docs, you'll need to convert them to `//!` format first for the validator to work correctly.
+
+```bash
+# Validate documentation in default paths (configured in config.yaml)
+autodebugger validate-docs
+
+# Validate specific directories
+autodebugger validate-docs src/ lib/
+
+# Verbose mode shows all validated files and skipped simple modules
+autodebugger validate-docs --verbose
+
+# Strict mode treats warnings as errors (useful for CI/CD)
+autodebugger validate-docs --strict
+```
+
+The validation thresholds are fully configurable in `config.yaml`:
+```yaml
+validate_docs:
+  default_paths: ["src"]           # Paths to validate when none specified
+  min_doc_lines_complex: 50        # Minimum doc lines for complex modules
+  max_doc_lines: 200               # Maximum doc lines for any module
+  complexity_threshold: 200        # Line count to consider a module "complex"
+  ignore_patterns: ["**/tests/**"] # Glob patterns to exclude from validation
+```
+
 ### remove-debug
 Remove all `debug!` macro calls from Rust source files. Follows the convention that debug! calls are temporary and should be removed before committing.
 
