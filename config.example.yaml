@@ -15,3 +15,17 @@ remove_debug:
   default_paths:
     - src
     - tests
+
+# Validate-docs command configuration
+validate_docs:
+  # Default paths to validate when no paths are specified
+  default_paths:
+    - src
+  # Minimum documentation lines for complex modules
+  min_doc_lines_complex: 50
+  # Maximum documentation lines for any module
+  max_doc_lines: 200
+  # Line count threshold to consider a module "complex"
+  complexity_threshold: 200
+  # Glob patterns to ignore
+  ignore_patterns: []
