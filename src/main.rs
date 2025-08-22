@@ -109,6 +109,7 @@ async fn main() -> Result<()> {
     
     match cli.command {
         Some(Commands::Monitor { path, format }) => {
+            info!("Starting monitor for path: {}", path.display());
             let monitor = Monitor::new(path)?;
             let status = monitor.status()?;
             
@@ -233,5 +234,6 @@ async fn main() -> Result<()> {
         }
     }
     
+    info!("Autodebugger shutting down");
     Ok(())
 }

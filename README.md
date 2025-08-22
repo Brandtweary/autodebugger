@@ -1,6 +1,6 @@
 # Autodebugger
 
-Developer utilities designed to enhance LLM-assisted coding workflows. Autodebugger provides essential tools that help language models work more effectively with real-world codebases, addressing common pain points like excessive logging and complex command orchestration.
+Developer utilities designed to enhance LLM-assisted coding workflows. Autodebugger provides essential tools that help language models work more effectively with real-world codebases, including automated log verbosity detection, debug code removal, and rotating file logging.
 
 ## Installation
 
@@ -123,6 +123,52 @@ fn main() {
 - **Sled/pagecache filtering**: Automatically suppresses verbose output from sled database (common in Rust apps)
 - **Verbosity monitoring**: Built-in detection of excessive logging with configurable thresholds
 - **Environment-aware**: Respects RUST_LOG environment variable settings
+
+### Rotating File Logger
+
+Automatic file logging that works like the `tee` command - outputs to both console and rotating log files. Perfect for applications that need persistent logs with automatic cleanup:
+
+```rust
+use autodebugger::{init_logging_with_file, RotatingFileConfig};
+
+fn main() {
+    // Configure rotating file logger
+    let file_config = RotatingFileConfig {
+        log_directory: std::path::PathBuf::from("logs"),
+        filename: "myapp.log".to_string(),
+        max_files: 10,        // Keep 10 rotating files
+        max_size_mb: 10,      // Rotate at 10MB
+        console_output: true, // Also output to console
+    };
+    
+    // Initialize with both console and file output
+    let (verbosity_layer, _file_guard) = init_logging_with_file(
+        Some("info"), 
+        Some(file_config)
+    ).expect("Failed to initialize logging");
+    
+    // All tracing output now goes to both console AND files
+    tracing::info!("This appears in console and logs/myapp.log");
+    
+    // Keep _file_guard alive for the duration of logging
+}
+```
+
+**Configuration via config file:**
+
+```yaml
+# autodebugger config.yaml
+log_rotation_count: 5  # Keep 5 log files (default: 10)
+```
+
+```rust
+// Load rotation count from config
+let config = autodebugger::Config::load().unwrap_or_default();
+let file_config = RotatingFileConfig {
+    max_files: config.log_rotation_count,  // Uses config value
+    // ... other settings
+};
+```
 
 ### Log Verbosity Detection
 Automatically detect when your application is generating excessive logs. The `VerbosityCheckLayer` integrates seamlessly with the `tracing` ecosystem to monitor log output and warn when thresholds are exceeded.

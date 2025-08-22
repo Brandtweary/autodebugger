@@ -11,6 +11,10 @@ pub struct Config {
     
     #[serde(default)]
     pub remove_debug: RemoveDebugConfig,
+    
+    /// Number of rotating log files to keep (default: 10)
+    #[serde(default = "default_log_rotation_count")]
+    pub log_rotation_count: usize,
 }
 
 /// Configuration for remove-debug command
@@ -42,6 +46,7 @@ impl Default for Config {
         Self {
             verbosity: VerbosityConfig::default(),
             remove_debug: RemoveDebugConfig::default(),
+            log_rotation_count: default_log_rotation_count(),
         }
     }
 }
@@ -71,6 +76,7 @@ fn default_trace_threshold() -> usize { 200 }
 fn default_remove_debug_paths() -> Vec<String> { 
     vec!["src".to_string(), "tests".to_string()] 
 }
+fn default_log_rotation_count() -> usize { 10 }
 
 impl Config {
     /// Load configuration from file, or use defaults if not found
