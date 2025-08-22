@@ -1,11 +1,14 @@
 use anyhow::Result;
-use autodebugger::{Autodebugger, monitor::Monitor, remove_debug::DebugRemover};
+use autodebugger::{
+    Autodebugger, 
+    monitor::Monitor, 
+    remove_debug::DebugRemover,
+    init_logging_with_file,
+    RotatingFileConfig,
+};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-use tracing::{info, Level};
-use tracing_subscriber::fmt::format::Writer;
-use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
-use tracing_subscriber::registry::LookupSpan;
+use tracing::info;
 
 #[derive(Parser)]
 #[command(author, version, about = "Cybernetic coding dashboard for monitoring LLM agents", long_about = None)]
@@ -83,57 +86,24 @@ enum Commands {
     },
 }
 
-/// Custom formatter that conditionally shows file:line only for ERROR and WARN levels
-struct ConditionalLocationFormatter;
-
-impl<S, N> FormatEvent<S, N> for ConditionalLocationFormatter
-where
-    S: tracing::Subscriber + for<'a> LookupSpan<'a>,
-    N: for<'a> FormatFields<'a> + 'static,
-{
-    fn format_event(
-        &self,
-        ctx: &FmtContext<'_, S, N>,
-        mut writer: Writer<'_>,
-        event: &tracing::Event<'_>,
-    ) -> std::fmt::Result {
-        let metadata = event.metadata();
-        let level = metadata.level();
-        
-        // Format level
-        write!(&mut writer, "{}", level)?;
-        
-        // Only show module target and file:line for ERROR and WARN levels
-        if matches!(level, &Level::ERROR | &Level::WARN) {
-            write!(&mut writer, " {}", metadata.target())?;
-            if let (Some(file), Some(line)) = (metadata.file(), metadata.line()) {
-                write!(&mut writer, " {}:{}", file, line)?;
-            }
-        }
-        
-        write!(&mut writer, ": ")?;
-        
-        // Write the event fields
-        ctx.field_format().format_fields(writer.by_ref(), event)?;
-        
-        writeln!(writer)
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    use tracing_subscriber::layer::SubscriberExt;
-    use tracing_subscriber::util::SubscriberInitExt;
-    use tracing_subscriber::EnvFilter;
+    // Initialize autodebugger's tracing subscriber with rotating file logging
+    let file_config = RotatingFileConfig {
+        log_directory: PathBuf::from("autodebugger_logs"),
+        filename: "autodebugger.log".to_string(),
+        max_files: 10,  // Keep 10 rotating logs
+        max_size_mb: 5,  // Rotate at 5MB
+        console_output: true,  // Also output to console
+    };
     
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let (_verbosity_layer, _file_guard) = init_logging_with_file(
+        Some("info"),
+        Some(file_config),
+    );
     
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(tracing_subscriber::fmt::layer()
-            .event_format(ConditionalLocationFormatter))
-        .init();
+    info!("Autodebugger starting");
     
     let cli = Cli::parse();
     
@@ -165,7 +135,7 @@ async fn main() -> Result<()> {
             let monitor = Monitor::new(path)?;
             
             if summary {
-                // TODO: Implement summary mode
+                // Summary mode implementation pending
                 println!("Summary mode not yet implemented");
             } else {
                 let diff = monitor.diff(worktree.as_deref())?;

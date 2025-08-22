@@ -8,15 +8,21 @@ pub mod monitor;
 pub mod tracing_subscriber;
 pub mod config;
 pub mod remove_debug;
+pub mod rotating_file_logger;
 
 // Re-export the main types for easy access
 pub use tracing_subscriber::{
     VerbosityCheckLayer,
     ConditionalLocationFormatter,
     init_logging,
+    init_logging_with_file,
     create_base_env_filter,
 };
 pub use config::Config;
+pub use rotating_file_logger::{RotatingFileLogger, RotatingFileConfig, RotatingFileGuard, RotatingWriterWrapper};
+
+// Type alias for backwards compatibility
+pub type AutoDebugger = Autodebugger;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandResult {

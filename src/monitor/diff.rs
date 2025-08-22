@@ -68,7 +68,7 @@ impl DiffTracker {
         Ok(all_diffs.join("\n---\n\n"))
     }
     
-    // TODO: Implement proper summary mode that returns structured data
+    // Summary mode implementation pending
     // Should return: Added files, Modified files, Deleted files, Line counts
     pub fn get_diff_summary(&self, workspace_path: &Path, worktree_name: &str) -> Result<String> {
         let worktree_path = workspace_path.join("worktrees").join(worktree_name);

@@ -2,3 +2,10 @@ target/
 Cargo.lock
 docs/
 config.yaml
+
+# Log files and directories
+*.log
+*.log.*
+logs/
+example_logs/
+test_logs*/

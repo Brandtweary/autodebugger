@@ -8,6 +8,7 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 use crate::config::Config;
+use crate::rotating_file_logger::{RotatingFileConfig, RotatingWriterWrapper};
 
 /// Custom formatter that conditionally shows file:line only for ERROR and WARN levels
 /// and omits the INFO prefix for cleaner default-level output
@@ -177,7 +178,7 @@ impl VerbosityCheckLayer {
     pub fn check_and_report(&self) -> Option<String> {
         self.check_verbosity().map(|warning| {
             format!(
-                "\n⚠️  Log Verbosity Warning\n\
+                "\nLOG VERBOSITY WARNING\n\
                 ========================\n\
                 Total log events: {} (threshold: {} for {} level)\n\n\
                 Breakdown by level:\n\
@@ -280,6 +281,66 @@ pub fn init_logging(default_level: Option<&str>) -> VerbosityCheckLayer {
         .init();
     
     verbosity_clone
+}
+
+/// Initialize logging with optional rotating file output
+/// This uses autodebugger's own tracing subscriber standards
+pub fn init_logging_with_file(
+    default_level: Option<&str>,
+    file_config: Option<RotatingFileConfig>,
+) -> (VerbosityCheckLayer, Option<crate::rotating_file_logger::RotatingFileGuard>) {
+    let default = default_level.unwrap_or("info");
+    let env_filter = create_base_env_filter(default);
+    let verbosity_layer = VerbosityCheckLayer::new();
+    let verbosity_clone = verbosity_layer.clone();
+    
+    // If file config provided, set up rotating file writer
+    let file_guard = if let Some(config) = file_config {
+        match RotatingWriterWrapper::new(config) {
+            Ok(writer_wrapper) => {
+                // Create file layer with same formatter as console
+                let file_layer = tracing_subscriber::fmt::layer()
+                    .event_format(ConditionalLocationFormatter)
+                    .with_writer(writer_wrapper.clone())
+                    .with_ansi(false);  // No ANSI colors in files
+                
+                // Console layer
+                let console_layer = tracing_subscriber::fmt::layer()
+                    .event_format(ConditionalLocationFormatter);
+                
+                tracing_subscriber::registry()
+                    .with(env_filter)
+                    .with(console_layer)
+                    .with(file_layer)
+                    .with(verbosity_layer)
+                    .init();
+                
+                Some(writer_wrapper.into_guard())
+            }
+            Err(e) => {
+                eprintln!("Failed to initialize rotating file logger: {}", e);
+                // Fall back to console-only
+                tracing_subscriber::registry()
+                    .with(env_filter)
+                    .with(tracing_subscriber::fmt::layer()
+                        .event_format(ConditionalLocationFormatter))
+                    .with(verbosity_layer)
+                    .init();
+                None
+            }
+        }
+    } else {
+        // No file logging requested
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(tracing_subscriber::fmt::layer()
+                .event_format(ConditionalLocationFormatter))
+            .with(verbosity_layer)
+            .init();
+        None
+    };
+    
+    (verbosity_clone, file_guard)
 }
 
 #[cfg(test)]
