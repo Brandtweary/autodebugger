@@ -25,6 +25,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::EnvFilter;
+use chrono;
 
 /// Configuration for the rotating file logger
 #[derive(Debug, Clone)]
@@ -155,12 +156,17 @@ struct RotatingWriter {
 
 impl RotatingWriter {
     fn new(config: RotatingFileConfig) -> Result<Self, std::io::Error> {
-        let log_path = config.log_directory.join(&config.filename);
+        // Add timestamp to filename to create unique file per run
+        let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+        let base_name = config.filename.trim_end_matches(".log");
+        let timestamped_filename = format!("{}_{}.log", base_name, timestamp);
+        let log_path = config.log_directory.join(&timestamped_filename);
         
-        // Open or create the main log file
+        // Create new file for this run (not append)
         let current_file = fs::OpenOptions::new()
             .create(true)
-            .append(true)
+            .write(true)
+            .truncate(true)
             .open(&log_path)?;
         
         // Get current file size
