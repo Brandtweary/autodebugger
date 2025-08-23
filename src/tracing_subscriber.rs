@@ -1,9 +1,8 @@
-//! Advanced tracing subscriber with conditional verbosity and file logging
+//! Advanced tracing subscriber with conditional verbosity control
 //!
 //! This module provides a sophisticated tracing subscriber implementation that extends
-//! the standard tracing-subscriber with dynamic verbosity control and rotating file
-//! logging capabilities. It's designed to provide granular control over logging output
-//! based on the frequency of similar messages.
+//! the standard tracing-subscriber with dynamic verbosity control. It's designed to 
+//! provide granular control over logging output based on the frequency of similar messages.
 //!
 //! ## Key Features
 //!
@@ -19,13 +18,6 @@
 //! log messages, but only when the verbosity threshold is exceeded. This helps identify
 //! the source of frequent log messages without cluttering initial output.
 //!
-//! ### Rotating File Logging
-//! Integration with the `rotating_file_logger` module provides:
-//! - Automatic log file rotation based on size
-//! - Timestamped log file creation
-//! - Configurable retention policies
-//! - Concurrent console and file output
-//!
 //! ### External Crate Filtering
 //! Automatically suppresses debug-level logs from external crates to reduce noise,
 //! while preserving info-level and above messages from all sources.
@@ -36,23 +28,23 @@
 //! 1. **Base Layer**: EnvFilter for RUST_LOG environment variable support
 //! 2. **Verbosity Layer**: Custom layer for frequency-based filtering
 //! 3. **Format Layer**: Customizable output formatting with conditional locations
-//! 4. **Writer Layer**: Multiplexed output to console and rotating files
 //!
 //! ## Usage
 //!
 //! ```rust,no_run
-//! use autodebugger::{init_logging_with_file, RotatingFileConfig};
+//! use autodebugger::init_logging;
 //!
-//! let config = RotatingFileConfig {
-//!     log_directory: "logs".into(),
-//!     filename: "app.log".to_string(),
-//!     max_files: 10,
-//!     max_size_mb: 5,
-//!     console_output: true,
-//!     truncate_on_limit: true,
+//! // Use default verbosity config from autodebugger's config.yaml
+//! let verbosity_layer = init_logging(Some("info"), None);
+//! 
+//! // Or provide custom verbosity thresholds
+//! use autodebugger::VerbosityConfig;
+//! let custom_verbosity = VerbosityConfig {
+//!     info_threshold: 100,
+//!     debug_threshold: 200,
+//!     trace_threshold: 500,
 //! };
-//!
-//! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config), None);
+//! let verbosity_layer = init_logging(Some("info"), Some(custom_verbosity));
 //! ```
 //!
 //! ## Configuration
@@ -72,7 +64,6 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 use crate::config::Config;
-use crate::rotating_file_logger::{RotatingFileConfig, RotatingWriterWrapper};
 
 /// Custom formatter that conditionally shows file:line only for ERROR and WARN levels
 /// and omits the INFO prefix for cleaner default-level output
@@ -331,60 +322,11 @@ pub fn create_base_env_filter(default_level: &str) -> EnvFilter {
 /// 
 /// # Arguments
 /// * `default_level` - Optional default log level (e.g., "info", "warn"). If None, defaults to "info"
-pub fn init_logging(default_level: Option<&str>) -> VerbosityCheckLayer {
-    let default = default_level.unwrap_or("info");
-    let env_filter = create_base_env_filter(default);
-    let verbosity_layer = VerbosityCheckLayer::new();
-    let verbosity_clone = verbosity_layer.clone();
-    
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(tracing_subscriber::fmt::layer()
-            .event_format(ConditionalLocationFormatter))
-        .with(verbosity_layer)
-        .init();
-    
-    verbosity_clone
-}
-
-/// Initialize logging with optional rotating file output
-/// This uses autodebugger's own tracing subscriber standards
-///
-/// # Arguments
-/// * `default_level` - Optional default log level (e.g., "info", "warn"). If None, defaults to "info"
-/// * `file_config` - Optional rotating file configuration. If None, logs only to console
-/// * `verbosity_config` - Optional verbosity thresholds. If None, uses autodebugger's config
-///
-/// # Examples
-/// 
-/// ```rust,no_run
-/// use autodebugger::{init_logging_with_file, RotatingFileConfig, VerbosityConfig};
-/// 
-/// let file_config = RotatingFileConfig {
-///     log_directory: "logs".into(),
-///     filename: "app.log".to_string(),
-///     max_files: 10,
-///     max_size_mb: 5,
-///     console_output: true,
-///     truncate_on_limit: true,
-/// };
-/// 
-/// // Use autodebugger's config for verbosity thresholds
-/// let (layer, _guard) = init_logging_with_file(Some("info"), Some(file_config.clone()), None);
-/// 
-/// // Use custom verbosity thresholds
-/// let custom_verbosity = VerbosityConfig {
-///     info_threshold: 30,
-///     debug_threshold: 80, 
-///     trace_threshold: 150,
-/// };
-/// let (layer2, _guard2) = init_logging_with_file(Some("info"), Some(file_config), Some(custom_verbosity));
-/// ```
-pub fn init_logging_with_file(
-    default_level: Option<&str>,
-    file_config: Option<RotatingFileConfig>,
-    verbosity_config: Option<crate::config::VerbosityConfig>,
-) -> (VerbosityCheckLayer, Option<crate::rotating_file_logger::RotatingFileGuard>) {
+/// * `verbosity_config` - Optional custom verbosity thresholds. If None, uses autodebugger's config.yaml
+pub fn init_logging(
+    default_level: Option<&str>, 
+    verbosity_config: Option<crate::config::VerbosityConfig>
+) -> VerbosityCheckLayer {
     let default = default_level.unwrap_or("info");
     let env_filter = create_base_env_filter(default);
     
@@ -400,53 +342,14 @@ pub fn init_logging_with_file(
     };
     let verbosity_clone = verbosity_layer.clone();
     
-    // If file config provided, set up rotating file writer
-    let file_guard = if let Some(config) = file_config {
-        match RotatingWriterWrapper::new(config) {
-            Ok(writer_wrapper) => {
-                // Create file layer with same formatter as console
-                let file_layer = tracing_subscriber::fmt::layer()
-                    .event_format(ConditionalLocationFormatter)
-                    .with_writer(writer_wrapper.clone())
-                    .with_ansi(false);  // No ANSI colors in files
-                
-                // Console layer
-                let console_layer = tracing_subscriber::fmt::layer()
-                    .event_format(ConditionalLocationFormatter);
-                
-                tracing_subscriber::registry()
-                    .with(env_filter)
-                    .with(console_layer)
-                    .with(file_layer)
-                    .with(verbosity_layer)
-                    .init();
-                
-                Some(writer_wrapper.into_guard())
-            }
-            Err(e) => {
-                eprintln!("Failed to initialize rotating file logger: {}", e);
-                // Fall back to console-only
-                tracing_subscriber::registry()
-                    .with(env_filter)
-                    .with(tracing_subscriber::fmt::layer()
-                        .event_format(ConditionalLocationFormatter))
-                    .with(verbosity_layer)
-                    .init();
-                None
-            }
-        }
-    } else {
-        // No file logging requested
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(tracing_subscriber::fmt::layer()
-                .event_format(ConditionalLocationFormatter))
-            .with(verbosity_layer)
-            .init();
-        None
-    };
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_subscriber::fmt::layer()
+            .event_format(ConditionalLocationFormatter))
+        .with(verbosity_layer)
+        .init();
     
-    (verbosity_clone, file_guard)
+    verbosity_clone
 }
 
 #[cfg(test)]

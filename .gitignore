@@ -2,11 +2,10 @@ target/
 Cargo.lock
 docs/
 config.yaml
+.claude
 
 # Log files and directories
 *.log
 *.log.*
 logs/*
 !logs/.gitkeep
-example_logs/
-test_logs*/

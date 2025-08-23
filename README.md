@@ -50,25 +50,14 @@ autodebugger run <COMMAND>              # Run a command (legacy mode)
 ## Library Usage
 
 ```rust
-use autodebugger::{Autodebugger, init_logging, init_logging_with_file, RotatingFileConfig};
+use autodebugger::{Autodebugger, init_logging};
 
 // Command execution
 let debugger = Autodebugger::new();
 let result = debugger.run_command("cargo build")?;
 
-// Simple tracing setup (what cymbiont uses)
+// Initialize tracing
 let verbosity_layer = init_logging(None);  // Uses "info" as default
-
-// With rotating file logger
-let config = RotatingFileConfig {
-    log_directory: "logs".into(),
-    filename: "app.log".to_string(),
-    max_files: 10,
-    max_size_mb: 5,
-    console_output: true,
-    truncate_on_limit: true,  // Stop logging when size limit reached (default)
-};
-let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config));
 
 // Check verbosity at shutdown (optional)
 if let Some(report) = verbosity_layer.check_and_report() {
@@ -82,14 +71,6 @@ if let Some(report) = verbosity_layer.check_and_report() {
 - `init_logging()` - Quick setup with sensible defaults
 - `VerbosityCheckLayer` - Detects excessive logging patterns
 - `ConditionalLocationFormatter` - Shows file:line only for WARN/ERROR
-
-**Rotating File Logger**: Automatic size-based rotation with configurable behavior
-- Works like `tee` - outputs to console and file
-- Thread-safe with atomic rotation
-- Creates `{filename}_latest.log` symlink pointing to current timestamped log
-- `truncate_on_limit: true` (default): stops logging when size limit reached, preserves history across runs
-- `truncate_on_limit: false`: creates numbered backups within single run, good for long-running services
-- Timestamped log files per run
 
 **Verbosity Detection**: Configurable thresholds warn when logs exceed limits
 ```yaml
@@ -105,7 +86,6 @@ All settings in `config.yaml` (see `config.example.yaml` for options):
 - `validate_docs`: Documentation validation thresholds
 - `remove_debug`: Default paths for debug removal  
 - `verbosity`: Log verbosity thresholds
-- `log_rotation_count`: Number of rotating log files
 
 ## Testing
 

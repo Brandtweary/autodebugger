@@ -65,8 +65,7 @@ use autodebugger::{
     Autodebugger, 
     monitor::Monitor, 
     remove_debug::DebugRemover,
-    init_logging_with_file,
-    RotatingFileConfig,
+    init_logging,
 };
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -165,21 +164,8 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize autodebugger's tracing subscriber with rotating file logging
-    let file_config = RotatingFileConfig {
-        log_directory: PathBuf::from("logs"),
-        filename: "autodebugger.log".to_string(),
-        max_files: 10,  // Keep 10 rotating logs
-        max_size_mb: 5,  // Rotate at 5MB
-        console_output: true,  // Also output to console
-        truncate_on_limit: true,  // Stop logging when size limit reached
-    };
-    
-    let (_verbosity_layer, _file_guard) = init_logging_with_file(
-        Some("info"),
-        Some(file_config),
-        None,  // Use autodebugger's own config
-    );
+    // Initialize autodebugger's tracing subscriber (using autodebugger's own config)
+    let _verbosity_layer = init_logging(Some("info"), None);
     
     info!("Autodebugger starting");
     

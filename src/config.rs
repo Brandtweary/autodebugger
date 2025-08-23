@@ -14,10 +14,6 @@ pub struct Config {
     
     #[serde(default)]
     pub validate_docs: ValidateDocsConfig,
-    
-    /// Number of rotating log files to keep (default: 10)
-    #[serde(default = "default_log_rotation_count")]
-    pub log_rotation_count: usize,
 }
 
 /// Configuration for remove-debug command
@@ -52,6 +48,7 @@ pub struct ValidateDocsConfig {
     pub ignore_patterns: Vec<String>,
 }
 
+
 /// Log verbosity threshold configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VerbosityConfig {
@@ -74,7 +71,6 @@ impl Default for Config {
             verbosity: VerbosityConfig::default(),
             remove_debug: RemoveDebugConfig::default(),
             validate_docs: ValidateDocsConfig::default(),
-            log_rotation_count: default_log_rotation_count(),
         }
     }
 }
@@ -98,6 +94,7 @@ impl Default for ValidateDocsConfig {
         }
     }
 }
+
 
 impl Default for VerbosityConfig {
     fn default() -> Self {
@@ -125,7 +122,6 @@ fn default_complexity_threshold() -> usize { 200 }
 fn default_ignore_patterns() -> Vec<String> {
     vec!["**/tests/**".to_string(), "**/examples/**".to_string()]
 }
-fn default_log_rotation_count() -> usize { 10 }
 
 impl Config {
     /// Load configuration from file, or use defaults if not found
