@@ -348,13 +348,45 @@ pub fn init_logging(default_level: Option<&str>) -> VerbosityCheckLayer {
 
 /// Initialize logging with optional rotating file output
 /// This uses autodebugger's own tracing subscriber standards
+///
+/// # Arguments
+/// * `default_level` - Optional default log level (e.g., "info", "warn"). If None, defaults to "info"
+/// * `file_config` - Optional rotating file configuration. If None, logs only to console
+/// * `verbosity_config` - Optional verbosity thresholds. If None, uses autodebugger's config
+///
+/// # Examples
+/// 
+/// ```rust
+/// // Use autodebugger's config for verbosity thresholds
+/// let (layer, _guard) = init_logging_with_file(Some("info"), Some(config), None);
+/// 
+/// // Use custom verbosity thresholds
+/// use autodebugger::config::VerbosityConfig;
+/// let custom_verbosity = VerbosityConfig {
+///     info_threshold: 30,
+///     debug_threshold: 80, 
+///     trace_threshold: 150,
+/// };
+/// let (layer, _guard) = init_logging_with_file(Some("info"), Some(config), Some(custom_verbosity));
+/// ```
 pub fn init_logging_with_file(
     default_level: Option<&str>,
     file_config: Option<RotatingFileConfig>,
+    verbosity_config: Option<crate::config::VerbosityConfig>,
 ) -> (VerbosityCheckLayer, Option<crate::rotating_file_logger::RotatingFileGuard>) {
     let default = default_level.unwrap_or("info");
     let env_filter = create_base_env_filter(default);
-    let verbosity_layer = VerbosityCheckLayer::new();
+    
+    // Create verbosity layer with custom config if provided
+    let verbosity_layer = match verbosity_config {
+        Some(config) => {
+            // Build a Config struct with the provided verbosity
+            let mut full_config = Config::default();
+            full_config.verbosity = config;
+            VerbosityCheckLayer::with_config(full_config)
+        },
+        None => VerbosityCheckLayer::new(),  // Use autodebugger's config
+    };
     let verbosity_clone = verbosity_layer.clone();
     
     // If file config provided, set up rotating file writer

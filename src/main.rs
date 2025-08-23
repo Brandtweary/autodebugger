@@ -177,6 +177,7 @@ async fn main() -> Result<()> {
     let (_verbosity_layer, _file_guard) = init_logging_with_file(
         Some("info"),
         Some(file_config),
+        None,  // Use autodebugger's own config
     );
     
     info!("Autodebugger starting");

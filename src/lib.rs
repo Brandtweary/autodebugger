@@ -75,7 +75,7 @@ pub use tracing_subscriber::{
     init_logging_with_file,
     create_base_env_filter,
 };
-pub use config::Config;
+pub use config::{Config, VerbosityConfig};
 pub use rotating_file_logger::{RotatingFileLogger, RotatingFileConfig, RotatingFileGuard, RotatingWriterWrapper};
 
 // Type alias for backwards compatibility
