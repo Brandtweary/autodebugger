@@ -48,10 +48,14 @@
 //!
 //! ```rust
 //! use autodebugger::Autodebugger;
+//! use anyhow::Result;
 //!
-//! let debugger = Autodebugger::new();
-//! let result = debugger.run_command("git status")?;
-//! println!("Output: {}", result.stdout);
+//! fn main() -> Result<()> {
+//!     let debugger = Autodebugger::new();
+//!     let result = debugger.run_command("git status")?;
+//!     println!("Output: {}", result.stdout);
+//!     Ok(())
+//! }
 //! ```
 
 use anyhow::{Context, Result};

@@ -40,8 +40,8 @@
 //!
 //! ## Usage
 //!
-//! ```rust
-//! use autodebugger::tracing_subscriber::{init_logging_with_file, RotatingFileConfig};
+//! ```rust,no_run
+//! use autodebugger::{init_logging_with_file, RotatingFileConfig};
 //!
 //! let config = RotatingFileConfig {
 //!     log_directory: "logs".into(),
@@ -51,7 +51,7 @@
 //!     console_output: true,
 //! };
 //!
-//! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config));
+//! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config), None);
 //! ```
 //!
 //! ## Configuration
@@ -356,18 +356,27 @@ pub fn init_logging(default_level: Option<&str>) -> VerbosityCheckLayer {
 ///
 /// # Examples
 /// 
-/// ```rust
+/// ```rust,no_run
+/// use autodebugger::{init_logging_with_file, RotatingFileConfig, VerbosityConfig};
+/// 
+/// let file_config = RotatingFileConfig {
+///     log_directory: "logs".into(),
+///     filename: "app.log".to_string(),
+///     max_files: 10,
+///     max_size_mb: 5,
+///     console_output: true,
+/// };
+/// 
 /// // Use autodebugger's config for verbosity thresholds
-/// let (layer, _guard) = init_logging_with_file(Some("info"), Some(config), None);
+/// let (layer, _guard) = init_logging_with_file(Some("info"), Some(file_config.clone()), None);
 /// 
 /// // Use custom verbosity thresholds
-/// use autodebugger::config::VerbosityConfig;
 /// let custom_verbosity = VerbosityConfig {
 ///     info_threshold: 30,
 ///     debug_threshold: 80, 
 ///     trace_threshold: 150,
 /// };
-/// let (layer, _guard) = init_logging_with_file(Some("info"), Some(config), Some(custom_verbosity));
+/// let (layer2, _guard2) = init_logging_with_file(Some("info"), Some(file_config), Some(custom_verbosity));
 /// ```
 pub fn init_logging_with_file(
     default_level: Option<&str>,

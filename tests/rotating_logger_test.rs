@@ -25,12 +25,26 @@ fn test_rotating_logger_creates_files() {
     info!("Test log entry 2");
     info!("Test log entry 3");
     
-    // Check that the log file was created
-    let log_path = Path::new(&test_dir).join("test.log");
-    assert!(log_path.exists(), "Log file should exist");
+    // Check that a timestamped log file was created in the directory
+    let test_path = Path::new(&test_dir);
+    assert!(test_path.exists(), "Test directory should exist");
     
-    // Read the log file
-    let contents = fs::read_to_string(&log_path)
+    // Find the timestamped log file
+    let entries = fs::read_dir(&test_path)
+        .expect("Should be able to read test directory");
+    
+    let log_files: Vec<_> = entries
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            entry.path().extension().and_then(|s| s.to_str()) == Some("log")
+        })
+        .collect();
+    
+    assert!(!log_files.is_empty(), "At least one log file should exist");
+    
+    // Read the first log file we find
+    let log_file = &log_files[0];
+    let contents = fs::read_to_string(log_file.path())
         .expect("Should be able to read log file");
     
     // Verify content

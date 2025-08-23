@@ -73,15 +73,20 @@
 //! ### Programmatic Usage
 //! ```rust
 //! use autodebugger::validate_docs::DocValidator;
+//! use anyhow::Result;
 //!
-//! let validator = DocValidator::new()
-//!     .with_min_doc_lines(60)
-//!     .with_complexity_threshold(150)
-//!     .with_ignore_patterns(vec!["**/generated/**".to_string()])?;
+//! fn main() -> Result<()> {
+//!     let validator = DocValidator::new()
+//!         .with_min_doc_lines(60)
+//!         .with_complexity_threshold(150)
+//!         .with_ignore_patterns(vec!["**/generated/**".to_string()])?;
 //!
-//! let report = validator.validate_paths(vec!["src".into()])?;
-//! if !report.passed(strict_mode) {
-//!     eprintln!("Documentation validation failed!");
+//!     let report = validator.validate_paths(vec!["src".into()])?;
+//!     let strict_mode = true;
+//!     if !report.passed(strict_mode) {
+//!         eprintln!("Documentation validation failed!");
+//!     }
+//!     Ok(())
 //! }
 //! ```
 //!

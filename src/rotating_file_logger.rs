@@ -49,7 +49,7 @@
 //! ```
 //!
 //! ### With Tracing Integration
-//! ```rust
+//! ```rust,no_run
 //! use autodebugger::{init_logging_with_file, RotatingFileConfig};
 //!
 //! let config = RotatingFileConfig {
@@ -60,7 +60,7 @@
 //!     console_output: true,
 //! };
 //!
-//! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config));
+//! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config), None);
 //! ```
 //!
 //! ## File Naming Convention

@@ -17,13 +17,17 @@
 //!
 //! ```rust
 //! use autodebugger::remove_debug::DebugRemover;
+//! use anyhow::Result;
 //!
-//! let remover = DebugRemover::new("src".into())
-//!     .with_dry_run(true)
-//!     .with_verbose(true);
+//! fn main() -> Result<()> {
+//!     let remover = DebugRemover::new("src".into())
+//!         .with_dry_run(true)
+//!         .with_verbose(true);
 //!
-//! let report = remover.remove_debug_calls()?;
-//! report.print_summary(true);
+//!     let report = remover.remove_debug_calls()?;
+//!     report.print_summary(true);
+//!     Ok(())
+//! }
 //! ```
 //!
 //! ## Algorithm
