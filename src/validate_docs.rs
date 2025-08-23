@@ -254,18 +254,27 @@ impl DocValidator {
         // Check for validation issues
         let mut issues = Vec::new();
 
+        // Only check complex modules
+        if is_complex {
+            // Warn if complex module has no header documentation at all
+            if doc_lines == 0 {
+                issues.push(ValidationIssue::NoDocs {
+                    total_lines,
+                });
+            } else if doc_lines < self.min_doc_lines_complex {
+                issues.push(ValidationIssue::InsufficientDocs {
+                    lines: doc_lines,
+                    min: self.min_doc_lines_complex,
+                    total_lines,
+                });
+            }
+        }
+        
+        // Check for excessive docs (applies to all modules)
         if doc_lines > self.max_doc_lines {
             issues.push(ValidationIssue::ExcessiveDocs {
                 lines: doc_lines,
                 max: self.max_doc_lines,
-            });
-        }
-
-        if is_complex && doc_lines < self.min_doc_lines_complex {
-            issues.push(ValidationIssue::InsufficientDocs {
-                lines: doc_lines,
-                min: self.min_doc_lines_complex,
-                total_lines,
             });
         }
 
@@ -275,6 +284,12 @@ impl DocValidator {
             if self.verbose {
                 for issue in &issues {
                     match issue {
+                        ValidationIssue::NoDocs { total_lines } => {
+                            warn!(
+                                "{}: Complex module ({} lines) has no documentation (use //! format)",
+                                path.display(), total_lines
+                            );
+                        }
                         ValidationIssue::InsufficientDocs { lines, min, total_lines } => {
                             warn!(
                                 "{}: Complex module ({} lines) has insufficient documentation ({} lines, minimum {})",
@@ -317,8 +332,15 @@ impl DocValidator {
                 } else if trimmed.is_empty() {
                     // Allow blank lines within documentation
                     continue;
+                } else if trimmed.starts_with("#![") {
+                    // Allow module-level attributes (like #![allow(dead_code)])
+                    // These are valid at the module level and don't break the doc block
+                    continue;
+                } else if trimmed.starts_with("//") {
+                    // Regular comments are allowed but don't count as docs
+                    continue;
                 } else {
-                    // First non-doc, non-blank line - stop counting
+                    // First actual code line (use statements, structs, etc.) - stop counting
                     in_doc_block = false;
                 }
             } else {
@@ -390,6 +412,10 @@ impl ValidationReport {
             for (file_info, issues) in &self.file_issues {
                 for issue in issues {
                     match issue {
+                        ValidationIssue::NoDocs { total_lines } => {
+                            println!("  {}: Complex module ({} lines) has no documentation (use //! format)",
+                                    file_info.path.display(), total_lines);
+                        }
                         ValidationIssue::InsufficientDocs { lines, min, total_lines } => {
                             println!("  {}: Complex module ({} lines) has insufficient documentation ({} lines, minimum {})",
                                     file_info.path.display(), total_lines, lines, min);
@@ -433,6 +459,9 @@ impl ValidationReport {
 /// Types of validation issues
 #[derive(Debug)]
 pub enum ValidationIssue {
+    NoDocs {
+        total_lines: usize,
+    },
     InsufficientDocs { 
         lines: usize, 
         min: usize,

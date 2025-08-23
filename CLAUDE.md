@@ -37,7 +37,6 @@ autodebugger --help              # View all available commands
 
 ## Project Structure
 
-### Core Directories
 - **src/**: Main source code
   - **main.rs**: CLI entry point with all command handlers
   - **lib.rs**: Core library exports and command execution
@@ -50,20 +49,17 @@ autodebugger --help              # View all available commands
     - **mod.rs**: Monitor orchestration
     - **worktree.rs**: Git worktree detection
     - **diff.rs**: Diff tracking and aggregation
-- **examples/**: Usage examples
-  - **basic_usage.rs**: Simple command execution
-  - **interactive_debugging.rs**: LLM agent simulation
-  - **rotating_logger.rs**: Log rotation demonstration
 - **tests/**: Integration tests
-- **sample_project/**: Test Rust project for debugging
+  - **integration_test.rs**: Core integration tests
+  - **rotating_logger_test.rs**: Rotating logger tests
 - **autodebugger_logs/**: Generated log files (git-ignored)
-
-### Configuration Files
 - **config.yaml**: Runtime configuration (not tracked)
 - **config.example.yaml**: Configuration template with all options documented
 - **Cargo.toml**: Dependencies and metadata
+- **Cargo.lock**: Locked dependency versions
 - **README.md**: User documentation and installation guide
 
 ## Development Guidelines
+- **IMPORTANT**: After making changes, run `cargo install --path .` to update the global autodebugger command
 - Logging: Use `tracing` macros - `info!()`, `warn!()`, `error!()`, `debug!()`, `trace!()`
 - Error handling: Use `anyhow::Result` with context

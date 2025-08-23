@@ -1,4 +1,4 @@
-//! Autodebugger CLI - A cybernetic coding dashboard for monitoring LLM agents
+//! Autodebugger CLI - Developer utilities for LLM-assisted coding
 //!
 //! This is the main entry point for the Autodebugger command-line interface.
 //! Autodebugger provides a suite of tools for managing and monitoring code development
@@ -73,7 +73,7 @@ use std::path::PathBuf;
 use tracing::info;
 
 #[derive(Parser)]
-#[command(author, version, about = "Cybernetic coding dashboard for monitoring LLM agents", long_about = None)]
+#[command(author, version, about = "Developer utilities for LLM-assisted coding", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
