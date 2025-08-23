@@ -6,6 +6,7 @@ config.yaml
 # Log files and directories
 *.log
 *.log.*
-logs/
+logs/*
+!logs/.gitkeep
 example_logs/
 test_logs*/

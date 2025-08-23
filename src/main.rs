@@ -167,7 +167,7 @@ enum Commands {
 async fn main() -> Result<()> {
     // Initialize autodebugger's tracing subscriber with rotating file logging
     let file_config = RotatingFileConfig {
-        log_directory: PathBuf::from("autodebugger_logs"),
+        log_directory: PathBuf::from("logs"),
         filename: "autodebugger.log".to_string(),
         max_files: 10,  // Keep 10 rotating logs
         max_size_mb: 5,  // Rotate at 5MB
