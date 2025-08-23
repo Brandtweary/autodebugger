@@ -66,6 +66,7 @@ let config = RotatingFileConfig {
     max_files: 10,
     max_size_mb: 5,
     console_output: true,
+    truncate_on_limit: true,  // Stop logging when size limit reached (default)
 };
 let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config));
 
@@ -82,9 +83,12 @@ if let Some(report) = verbosity_layer.check_and_report() {
 - `VerbosityCheckLayer` - Detects excessive logging patterns
 - `ConditionalLocationFormatter` - Shows file:line only for WARN/ERROR
 
-**Rotating File Logger**: Automatic size-based rotation with numbered backups
+**Rotating File Logger**: Automatic size-based rotation with configurable behavior
 - Works like `tee` - outputs to console and file
 - Thread-safe with atomic rotation
+- Creates `{filename}_latest.log` symlink pointing to current timestamped log
+- `truncate_on_limit: true` (default): stops logging when size limit reached, preserves history across runs
+- `truncate_on_limit: false`: creates numbered backups within single run, good for long-running services
 - Timestamped log files per run
 
 **Verbosity Detection**: Configurable thresholds warn when logs exceed limits

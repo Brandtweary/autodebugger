@@ -49,6 +49,7 @@
 //!     max_files: 10,
 //!     max_size_mb: 5,
 //!     console_output: true,
+//!     truncate_on_limit: true,
 //! };
 //!
 //! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config), None);
@@ -365,6 +366,7 @@ pub fn init_logging(default_level: Option<&str>) -> VerbosityCheckLayer {
 ///     max_files: 10,
 ///     max_size_mb: 5,
 ///     console_output: true,
+///     truncate_on_limit: true,
 /// };
 /// 
 /// // Use autodebugger's config for verbosity thresholds

@@ -58,6 +58,7 @@
 //!     max_files: 5,
 //!     max_size_mb: 10,
 //!     console_output: true,
+//!     truncate_on_limit: true,
 //! };
 //!
 //! let (_layer, _guard) = init_logging_with_file(Some("info"), Some(config), None);
@@ -65,11 +66,13 @@
 //!
 //! ## File Naming Convention
 //!
-//! Logs follow a predictable naming pattern:
-//! - Current log: `app.log`
-//! - First rotation: `app.log.1`
-//! - Second rotation: `app.log.2`
-//! - Oldest kept log: `app.log.N` (where N = max_files)
+//! Each run creates a unique timestamped log file:
+//! - Current log: `app_YYYYMMDD_HHMMSS.log` (new file per run)
+//! - Latest symlink: `app_latest.log` (always points to current timestamped log)
+//!
+//! When size limit is exceeded:
+//! - `truncate_on_limit: true` (default): stops logging, preserves history across runs
+//! - `truncate_on_limit: false`: creates numbered backups within the same run
 //!
 //! ## Performance Considerations
 //!
@@ -99,6 +102,9 @@ pub struct RotatingFileConfig {
     pub max_size_mb: u64,
     /// Whether to also output to console like 'tee' command (default: true)
     pub console_output: bool,
+    /// Whether to stop logging when size limit is reached (default: true)
+    /// If false, creates numbered backups (.1, .2, etc.) for long-running processes
+    pub truncate_on_limit: bool,
 }
 
 impl Default for RotatingFileConfig {
@@ -109,6 +115,7 @@ impl Default for RotatingFileConfig {
             max_files: 10,  // Keep 10 rotating log files by default
             max_size_mb: 10,
             console_output: true,
+            truncate_on_limit: true,  // Default: cap each run rather than create backups
         }
     }
 }
@@ -141,6 +148,11 @@ impl RotatingFileLoggerBuilder {
 
     pub fn with_console(mut self, enabled: bool) -> Self {
         self.config.console_output = enabled;
+        self
+    }
+
+    pub fn with_truncate_on_limit(mut self, truncate: bool) -> Self {
+        self.config.truncate_on_limit = truncate;
         self
     }
 
@@ -231,12 +243,17 @@ impl RotatingWriter {
         // Get current file size
         let current_size = current_file.metadata()?.len();
 
-        Ok(Self {
+        let writer = Self {
             config,
             current_file,
             current_size,
             log_path,
-        })
+        };
+        
+        // Create initial symlink to current log file
+        let _ = writer.update_latest_symlink(); // Ignore errors, just log warnings
+        
+        Ok(writer)
     }
 
     /// Rotate log files: app.log -> app.log.1, app.log.1 -> app.log.2, etc.
@@ -271,19 +288,68 @@ impl RotatingWriter {
             .open(&self.log_path)?;
         
         self.current_size = 0;
+        
+        // Update symlink to point to the new log file
+        let _ = self.update_latest_symlink(); // Ignore errors, just log warnings
+        
         Ok(())
     }
 
     fn should_rotate(&self) -> bool {
         self.current_size >= self.config.max_size_mb * 1024 * 1024
     }
+
+    /// Update the "latest" symlink/copy to point to the current log file
+    fn update_latest_symlink(&self) -> std::io::Result<()> {
+        // Generate the latest symlink name based on the base filename
+        let base_name = self.config.filename.trim_end_matches(".log");
+        let latest_filename = format!("{}_latest.log", base_name);
+        let latest_path = self.config.log_directory.join(&latest_filename);
+        
+        // Remove existing symlink/file if it exists
+        if latest_path.exists() {
+            if let Err(e) = fs::remove_file(&latest_path) {
+                tracing::warn!("Failed to remove existing latest symlink: {}", e);
+                return Ok(()); // Continue without failing
+            }
+        }
+        
+        // Create new symlink/copy pointing to current log file
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            // Use just the filename for the symlink target since they're in the same directory
+            let target_filename = self.log_path.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or(&self.config.filename);
+            if let Err(e) = symlink(target_filename, &latest_path) {
+                tracing::warn!("Failed to create symlink {}: {}", latest_filename, e);
+            }
+        }
+        
+        #[cfg(windows)]
+        {
+            if let Err(e) = fs::copy(&self.log_path, &latest_path) {
+                tracing::warn!("Failed to create latest copy {}: {}", latest_filename, e);
+            }
+        }
+        
+        Ok(())
+    }
 }
 
 impl Write for RotatingWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        // Check if we need to rotate
+        // Check if we're at size limit
         if self.should_rotate() {
-            self.rotate()?;
+            if self.config.truncate_on_limit {
+                // Truncate mode: stop logging when limit is reached
+                tracing::warn!("Log size limit reached ({}MB), stopping logging for this run", self.config.max_size_mb);
+                return Ok(buf.len()); // Pretend we wrote it to avoid errors
+            } else {
+                // Backup mode: rotate to numbered files
+                self.rotate()?;
+            }
         }
 
         let written = self.current_file.write(buf)?;

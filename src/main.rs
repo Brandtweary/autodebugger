@@ -172,6 +172,7 @@ async fn main() -> Result<()> {
         max_files: 10,  // Keep 10 rotating logs
         max_size_mb: 5,  // Rotate at 5MB
         console_output: true,  // Also output to console
+        truncate_on_limit: true,  // Stop logging when size limit reached
     };
     
     let (_verbosity_layer, _file_guard) = init_logging_with_file(
