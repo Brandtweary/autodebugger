@@ -165,7 +165,8 @@ enum Commands {
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize autodebugger's tracing subscriber (using autodebugger's own config)
-    let _verbosity_layer = init_logging(Some("info"), None);
+    // Using None for output defaults to stdout (normal behavior for non-MCP usage)
+    let _verbosity_layer = init_logging(Some("info"), None, None);
     
     info!("Autodebugger starting");
     

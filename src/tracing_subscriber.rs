@@ -4,6 +4,23 @@
 //! the standard tracing-subscriber with dynamic verbosity control. It's designed to 
 //! provide granular control over logging output based on the frequency of similar messages.
 //!
+//! ## Output Destination Configuration
+//!
+//! The tracing subscriber can output to either stdout or stderr. This is configurable
+//! to support different use cases:
+//!
+//! - **stdout (default)**: Standard behavior for most applications. Logs and application
+//!   output are mixed together, which is fine for typical CLI tools.
+//!
+//! - **stderr**: Required when the application uses stdout for structured output that
+//!   must not be contaminated with logs. Critical for:
+//!   - MCP (Model Context Protocol) servers that communicate via JSON-RPC over stdio
+//!   - Unix pipes where stdout contains data to be processed by other tools
+//!   - Any protocol that requires clean stdout for machine-readable output
+//!
+//! When running as an MCP server, logs MUST go to stderr to keep stdout clean for
+//! JSON-RPC messages. Mixing logs with JSON-RPC on stdout will break the protocol.
+//!
 //! ## Key Features
 //!
 //! ### Verbosity-Based Filtering
@@ -323,9 +340,12 @@ pub fn create_base_env_filter(default_level: &str) -> EnvFilter {
 /// # Arguments
 /// * `default_level` - Optional default log level (e.g., "info", "warn"). If None, defaults to "info"
 /// * `verbosity_config` - Optional custom verbosity thresholds. If None, uses autodebugger's config.yaml
+/// * `output` - Optional output destination ("stdout" or "stderr"). If None, defaults to stdout.
+///              Note: When using as an MCP server, must be set to "stderr" to keep stdout clean for JSON-RPC.
 pub fn init_logging(
     default_level: Option<&str>, 
-    verbosity_config: Option<crate::config::VerbosityConfig>
+    verbosity_config: Option<crate::config::VerbosityConfig>,
+    output: Option<&str>
 ) -> VerbosityCheckLayer {
     let default = default_level.unwrap_or("info");
     let env_filter = create_base_env_filter(default);
@@ -342,12 +362,29 @@ pub fn init_logging(
     };
     let verbosity_clone = verbosity_layer.clone();
     
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(tracing_subscriber::fmt::layer()
-            .event_format(ConditionalLocationFormatter))
-        .with(verbosity_layer)
-        .init();
+    // Determine output destination
+    // Default to stdout for normal operation, but allow override to stderr
+    // This is critical for MCP servers which must keep stdout clean for JSON-RPC messages
+    match output {
+        Some("stderr") => {
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(tracing_subscriber::fmt::layer()
+                    .with_writer(std::io::stderr)
+                    .event_format(ConditionalLocationFormatter))
+                .with(verbosity_layer)
+                .init();
+        },
+        _ => {
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(tracing_subscriber::fmt::layer()
+                    .with_writer(std::io::stdout)
+                    .event_format(ConditionalLocationFormatter))
+                .with(verbosity_layer)
+                .init();
+        }
+    }
     
     verbosity_clone
 }
