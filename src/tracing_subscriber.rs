@@ -80,73 +80,9 @@ use tracing_subscriber::layer::{Context, Layer, SubscriberExt};
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-use crate::config::{Config, FileLogConfig};
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::sync::Mutex;
-use tracing_subscriber::fmt::MakeWriter;
+use crate::config::{Config, RotatingFileConfig};
+use crate::rotating_file_logger::RotatingWriterWrapper;
 
-/// Simple file writer for tracing that handles thread-safe writing
-pub struct FileWriter {
-    file: Arc<Mutex<std::fs::File>>,
-}
-
-impl FileWriter {
-    /// Create a new file writer with the specified configuration
-    pub fn new(config: FileLogConfig) -> std::io::Result<Self> {
-        // Ensure directory exists
-        if let Some(parent) = std::path::Path::new(&config.file_path).parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-
-        // Open log file (create or truncate based on config)
-        let file = if config.truncate {
-            OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(&config.file_path)?
-        } else {
-            OpenOptions::new()
-                .create(true)
-                .write(true)
-                .append(true)
-                .open(&config.file_path)?
-        };
-
-        Ok(Self {
-            file: Arc::new(Mutex::new(file)),
-        })
-    }
-}
-
-impl Write for FileWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut file = self.file.lock().unwrap();
-        file.write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        let mut file = self.file.lock().unwrap();
-        file.flush()
-    }
-}
-
-impl Clone for FileWriter {
-    fn clone(&self) -> Self {
-        Self {
-            file: Arc::clone(&self.file),
-        }
-    }
-}
-
-impl<'a> MakeWriter<'a> for FileWriter {
-    type Writer = FileWriter;
-
-    fn make_writer(&'a self) -> Self::Writer {
-        self.clone()
-    }
-}
 
 /// Custom formatter that conditionally shows file:line only for ERROR and WARN levels
 /// and omits the INFO prefix for cleaner default-level output
@@ -463,12 +399,12 @@ pub fn init_logging(
 /// * `verbosity_config` - Optional custom verbosity thresholds. If None, uses autodebugger's config.yaml
 /// * `output` - Optional output destination ("stdout" or "stderr"). If None, defaults to stdout.
 ///              Note: When using as an MCP server, must be set to "stderr" to keep stdout clean for JSON-RPC.
-/// * `file_config` - File logging configuration.
+/// * `file_config` - Rotating file logging configuration.
 pub fn init_logging_with_file(
     default_level: Option<&str>, 
     verbosity_config: Option<crate::config::VerbosityConfig>,
     output: Option<&str>,
-    file_config: FileLogConfig
+    file_config: RotatingFileConfig
 ) -> VerbosityCheckLayer {
     let default = default_level.unwrap_or("info");
     let env_filter = create_base_env_filter(default);
@@ -488,8 +424,8 @@ pub fn init_logging_with_file(
     };
     let verbosity_clone = verbosity_layer.clone();
     
-    // Try to create file writer
-    match FileWriter::new(file_config) {
+    // Try to create rotating file writer
+    match RotatingWriterWrapper::new(file_config) {
         Ok(file_writer) => {
             // Build dual logging step by step to avoid type conflicts
             match output {

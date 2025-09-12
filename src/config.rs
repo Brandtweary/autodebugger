@@ -75,6 +75,29 @@ pub struct FileLogConfig {
     pub truncate: bool,
 }
 
+/// Rotating file logger configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RotatingFileConfig {
+    /// Directory to store log files (created if doesn't exist)
+    #[serde(default = "default_log_directory")]
+    pub log_directory: String,
+    /// Base filename for logs (e.g., "app.log")
+    #[serde(default = "default_log_filename")]
+    pub filename: String,
+    /// Maximum number of rotating files to keep (default: 10)
+    #[serde(default = "default_max_files")]
+    pub max_files: usize,
+    /// Maximum file size in MB before rotation (default: 5)
+    #[serde(default = "default_max_size_mb")]
+    pub max_size_mb: u64,
+    /// Whether to also output to console (default: true)
+    #[serde(default = "default_console_output")]
+    pub console_output: bool,
+    /// Whether to truncate on size limit vs create numbered backups (default: true)
+    #[serde(default = "default_truncate_on_limit")]
+    pub truncate_on_limit: bool,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -125,11 +148,30 @@ impl Default for FileLogConfig {
     }
 }
 
+impl Default for RotatingFileConfig {
+    fn default() -> Self {
+        Self {
+            log_directory: default_log_directory(),
+            filename: default_log_filename(),
+            max_files: default_max_files(),
+            max_size_mb: default_max_size_mb(),
+            console_output: default_console_output(),
+            truncate_on_limit: default_truncate_on_limit(),
+        }
+    }
+}
+
 // Default threshold functions for serde
 fn default_info_threshold() -> usize { 50 }
 fn default_debug_threshold() -> usize { 100 }
 fn default_trace_threshold() -> usize { 200 }
 fn default_truncate() -> bool { true }
+fn default_log_directory() -> String { "logs".to_string() }
+fn default_log_filename() -> String { "app.log".to_string() }
+fn default_max_files() -> usize { 10 }
+fn default_max_size_mb() -> u64 { 5 }
+fn default_console_output() -> bool { true }
+fn default_truncate_on_limit() -> bool { true }
 fn default_remove_debug_paths() -> Vec<String> { 
     vec!["src".to_string(), "tests".to_string()] 
 }

@@ -68,6 +68,7 @@ pub mod tracing_subscriber;
 pub mod config;
 pub mod remove_debug;
 pub mod validate_docs;
+pub mod rotating_file_logger;
 
 // Re-export the main types for easy access
 pub use tracing_subscriber::{
@@ -77,7 +78,8 @@ pub use tracing_subscriber::{
     init_logging_with_file,
     create_base_env_filter,
 };
-pub use config::{Config, VerbosityConfig, FileLogConfig};
+pub use config::{Config, VerbosityConfig, FileLogConfig, RotatingFileConfig};
+pub use rotating_file_logger::{RotatingFileLogger, RotatingFileGuard, RotatingWriterWrapper};
 
 // Type alias for backwards compatibility
 pub type AutoDebugger = Autodebugger;
