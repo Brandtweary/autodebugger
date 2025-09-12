@@ -74,9 +74,10 @@ pub use tracing_subscriber::{
     VerbosityCheckLayer,
     ConditionalLocationFormatter,
     init_logging,
+    init_logging_with_file,
     create_base_env_filter,
 };
-pub use config::{Config, VerbosityConfig};
+pub use config::{Config, VerbosityConfig, FileLogConfig};
 
 // Type alias for backwards compatibility
 pub type AutoDebugger = Autodebugger;

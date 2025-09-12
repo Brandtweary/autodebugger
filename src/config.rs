@@ -65,6 +65,16 @@ pub struct VerbosityConfig {
     pub trace_threshold: usize,
 }
 
+/// File logging configuration
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FileLogConfig {
+    /// Path to log file
+    pub file_path: String,
+    /// Whether to truncate file on startup (default: true)
+    #[serde(default = "default_truncate")]
+    pub truncate: bool,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -106,10 +116,20 @@ impl Default for VerbosityConfig {
     }
 }
 
+impl Default for FileLogConfig {
+    fn default() -> Self {
+        Self {
+            file_path: "logs/app.log".to_string(),
+            truncate: default_truncate(),
+        }
+    }
+}
+
 // Default threshold functions for serde
 fn default_info_threshold() -> usize { 50 }
 fn default_debug_threshold() -> usize { 100 }
 fn default_trace_threshold() -> usize { 200 }
+fn default_truncate() -> bool { true }
 fn default_remove_debug_paths() -> Vec<String> { 
     vec!["src".to_string(), "tests".to_string()] 
 }

@@ -50,14 +50,26 @@ autodebugger run <COMMAND>              # Run a command (legacy mode)
 ## Library Usage
 
 ```rust
-use autodebugger::{Autodebugger, init_logging};
+use autodebugger::{Autodebugger, init_logging, init_logging_with_file, FileLogConfig};
 
 // Command execution
 let debugger = Autodebugger::new();
 let result = debugger.run_command("cargo build")?;
 
-// Initialize tracing
-let verbosity_layer = init_logging(None);  // Uses "info" as default
+// Initialize tracing (console only)
+let verbosity_layer = init_logging(None, None, None);  // Uses "info", stdout defaults
+
+// Initialize with file logging (dual output)
+let file_config = FileLogConfig {
+    file_path: "logs/app.log".to_string(),
+    truncate: true,
+};
+let verbosity_layer = init_logging_with_file(
+    Some("info"),
+    None,
+    Some("stderr"),  // Console to stderr, file gets both
+    file_config
+);
 
 // Check verbosity at shutdown (optional)
 if let Some(report) = verbosity_layer.check_and_report() {
@@ -68,9 +80,18 @@ if let Some(report) = verbosity_layer.check_and_report() {
 ## Key Features
 
 **Tracing Subscriber**: Clean console output, smart verbosity detection, automatic sled/pagecache filtering
-- `init_logging()` - Quick setup with sensible defaults
+- `init_logging()` - Quick setup with sensible defaults (console only)
+- `init_logging_with_file()` - Dual console + file output
 - `VerbosityCheckLayer` - Detects excessive logging patterns
 - `ConditionalLocationFormatter` - Shows file:line only for WARN/ERROR
+- `FileLogConfig` - Configure file logging behavior
+
+**File Logging**: Optional dual output to both console and file
+- Thread-safe file writing with Arc<Mutex<File>>
+- Configurable truncate vs append mode
+- No ANSI colors in log files
+- Automatic directory creation
+- Graceful fallback to console-only on file errors
 
 **Verbosity Detection**: Configurable thresholds warn when logs exceed limits
 ```yaml
