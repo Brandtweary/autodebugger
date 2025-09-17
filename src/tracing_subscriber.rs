@@ -424,39 +424,55 @@ pub fn init_logging_with_file(
     };
     let verbosity_clone = verbosity_layer.clone();
     
+    // Store console_output flag before moving file_config
+    let console_output = file_config.console_output;
+    
     // Try to create rotating file writer
     match RotatingWriterWrapper::new(file_config) {
         Ok(file_writer) => {
-            // Build dual logging step by step to avoid type conflicts
-            match output {
-                Some("stderr") => {
-                    // stderr + file
-                    tracing_subscriber::registry()
-                        .with(env_filter)
-                        .with(tracing_subscriber::fmt::layer()
-                            .with_writer(std::io::stderr)
-                            .event_format(ConditionalLocationFormatter))
-                        .with(tracing_subscriber::fmt::layer()
-                            .with_writer(file_writer)
-                            .with_ansi(false)
-                            .event_format(ConditionalLocationFormatter))
-                        .with(verbosity_layer)
-                        .init();
-                },
-                _ => {
-                    // stdout + file  
-                    tracing_subscriber::registry()
-                        .with(env_filter)
-                        .with(tracing_subscriber::fmt::layer()
-                            .with_writer(std::io::stdout)
-                            .event_format(ConditionalLocationFormatter))
-                        .with(tracing_subscriber::fmt::layer()
-                            .with_writer(file_writer)
-                            .with_ansi(false)
-                            .event_format(ConditionalLocationFormatter))
-                        .with(verbosity_layer)
-                        .init();
+            // Build logging configuration based on console_output flag
+            if console_output {
+                // Dual logging: console + file
+                match output {
+                    Some("stderr") => {
+                        // stderr + file
+                        tracing_subscriber::registry()
+                            .with(env_filter)
+                            .with(tracing_subscriber::fmt::layer()
+                                .with_writer(std::io::stderr)
+                                .event_format(ConditionalLocationFormatter))
+                            .with(tracing_subscriber::fmt::layer()
+                                .with_writer(file_writer)
+                                .with_ansi(false)
+                                .event_format(ConditionalLocationFormatter))
+                            .with(verbosity_layer)
+                            .init();
+                    },
+                    _ => {
+                        // stdout + file  
+                        tracing_subscriber::registry()
+                            .with(env_filter)
+                            .with(tracing_subscriber::fmt::layer()
+                                .with_writer(std::io::stdout)
+                                .event_format(ConditionalLocationFormatter))
+                            .with(tracing_subscriber::fmt::layer()
+                                .with_writer(file_writer)
+                                .with_ansi(false)
+                                .event_format(ConditionalLocationFormatter))
+                            .with(verbosity_layer)
+                            .init();
+                    }
                 }
+            } else {
+                // File only - no console output
+                tracing_subscriber::registry()
+                    .with(env_filter)
+                    .with(tracing_subscriber::fmt::layer()
+                        .with_writer(file_writer)
+                        .with_ansi(false)
+                        .event_format(ConditionalLocationFormatter))
+                    .with(verbosity_layer)
+                    .init();
             }
         },
         Err(e) => {
