@@ -43,7 +43,7 @@ autodebugger --help              # View all available commands
   - **config.rs**: YAML configuration management
   - **validate_docs.rs**: Documentation validation with configurable thresholds
   - **remove_debug.rs**: Debug macro removal with multi-line support
-  - **rotating_file_logger.rs**: Size-based log rotation with numbered backups
+  - **rotating_file_logger.rs**: Per-run timestamped logs in `timestamped/` subdirectory with latest symlink
   - **tracing_subscriber.rs**: Advanced tracing with verbosity detection
   - **monitor/**: Worktree monitoring
     - **mod.rs**: Monitor orchestration

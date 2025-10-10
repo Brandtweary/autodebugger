@@ -321,19 +321,10 @@ pub struct VerbosityWarning {
     pub counts: LogCounts,
 }
 
-/// Create a base env filter with sled/pagecache suppression
+/// Create a base env filter from environment or default level
 pub fn create_base_env_filter(default_level: &str) -> EnvFilter {
     EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(default_level))
-        // Suppress sled's verbose debug output
-        .add_directive("sled=warn".parse().unwrap())
-        .add_directive("pagecache=warn".parse().unwrap())
-        // Reduce HTTP client verbosity (only show warnings and errors)
-        .add_directive("hyper=warn".parse().unwrap())
-        .add_directive("reqwest=warn".parse().unwrap())
-        // Reduce WebSocket library verbosity (only show warnings and errors)
-        .add_directive("tungstenite=warn".parse().unwrap())
-        .add_directive("tokio_tungstenite=warn".parse().unwrap())
 }
 
 /// Initialize the tracing subscriber with custom formatting and verbosity checking

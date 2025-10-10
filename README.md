@@ -79,7 +79,7 @@ if let Some(report) = verbosity_layer.check_and_report() {
 
 ## Key Features
 
-**Tracing Subscriber**: Clean console output, smart verbosity detection, automatic sled/pagecache filtering
+**Tracing Subscriber**: Clean console output, smart verbosity detection
 - `init_logging()` - Quick setup with sensible defaults (console only)
 - `init_logging_with_file()` - Dual console + file output
 - `VerbosityCheckLayer` - Detects excessive logging patterns

@@ -50,7 +50,7 @@
 //!
 //! ### With Tracing Integration
 //! ```rust,no_run
-//! use autodebugger::{init_logging_with_rotating_file, RotatingFileConfig};
+//! use autodebugger::{init_logging_with_file, RotatingFileConfig};
 //!
 //! let config = RotatingFileConfig {
 //!     log_directory: "logs".to_string(),
@@ -61,14 +61,14 @@
 //!     truncate_on_limit: true,
 //! };
 //!
-//! let (_layer, _guard) = init_logging_with_rotating_file(Some("info"), Some(config), None);
+//! let _layer = init_logging_with_file(Some("info"), None, None, config);
 //! ```
 //!
 //! ## File Naming Convention
 //!
-//! Each run creates a unique timestamped log file:
-//! - Current log: `app_YYYYMMDD_HHMMSS.log` (new file per run)
-//! - Latest symlink: `app_latest.log` (always points to current timestamped log)
+//! Each run creates a unique timestamped log file in the `timestamped/` subdirectory:
+//! - Current log: `timestamped/app_YYYYMMDD_HHMMSS.log` (new file per run)
+//! - Latest symlink: `app_latest.log` (at directory root, points to `timestamped/app_YYYYMMDD_HHMMSS.log`)
 //!
 //! When size limit is exceeded:
 //! - `truncate_on_limit: true` (default): stops logging, preserves history across runs
@@ -176,11 +176,15 @@ struct RotatingWriter {
 
 impl RotatingWriter {
     fn new(config: RotatingFileConfig) -> Result<Self, std::io::Error> {
+        // Create timestamped subdirectory for actual log files
+        let timestamped_dir = PathBuf::from(&config.log_directory).join("timestamped");
+        fs::create_dir_all(&timestamped_dir)?;
+
         // Add timestamp to filename to create unique file per run
         let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
         let base_name = config.filename.trim_end_matches(".log");
         let timestamped_filename = format!("{}_{}.log", base_name, timestamp);
-        let log_path = PathBuf::from(&config.log_directory).join(&timestamped_filename);
+        let log_path = timestamped_dir.join(&timestamped_filename);
         
         // Create new file for this run (not append)
         let current_file = fs::OpenOptions::new()
@@ -267,11 +271,12 @@ impl RotatingWriter {
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            // Use just the filename for the symlink target since they're in the same directory
+            // Use relative path to timestamped subdirectory for the symlink
             let target_filename = self.log_path.file_name()
                 .and_then(|name| name.to_str())
                 .unwrap_or(&self.config.filename);
-            if let Err(e) = symlink(target_filename, &latest_path) {
+            let target_path = format!("timestamped/{}", target_filename);
+            if let Err(e) = symlink(&target_path, &latest_path) {
                 tracing::warn!("Failed to create symlink {}: {}", latest_filename, e);
             }
         }
