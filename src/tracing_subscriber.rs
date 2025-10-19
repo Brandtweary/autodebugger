@@ -493,7 +493,6 @@ mod tests {
         tracing::error!("Test error");
         tracing::warn!("Test warning");
         tracing::info!("Test info");
-        tracing::debug!("Test debug");
         tracing::trace!("Test trace");
         
         let counts = layer_clone.counts_by_level();
